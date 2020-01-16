@@ -20,8 +20,7 @@ struct Window *openBackdrop(struct Screen *s)
         WA_BackFill,        LAYERS_NOBACKFILL,
         WA_IDCMP,           IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
         WA_ReportMouse,     TRUE,
-        TAG_DONE))
-    {
+        TAG_DONE)) {
         return(w);
     }
     return(NULL);
