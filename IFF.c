@@ -1,126 +1,151 @@
 
+/*
+**  (C)2018-2020 Robert Szacki Software House
+**
+**  » Magazyn «
+**
+**  $Id: IFF.c,v 1.1 12/.0/.0 .2:.1:.2 Robert Exp $
+*/
+
 #include <dos/dos.h>
 #include <libraries/iffparse.h>
 #include <datatypes/pictureclass.h>
+#include <datatypes/soundclass.h>
 #include <exec/memory.h>
 
-#include <clib/exec_protos.h>
-#include <clib/graphics_protos.h>
 #include <clib/dos_protos.h>
 #include <clib/iffparse_protos.h>
+#include <clib/exec_protos.h>
+#include <clib/graphics_protos.h>
 
-#define RGB(v) ((v)|((v)<<8)|((v)<<16)|((v)<<24))
-#define RowBytes(w) ((((w)+15)>>4)<<1)
+#include "IFF.h"
 
-/* Insall IFF chunks. */
-BOOL installIFF(struct IFFHandle *iff, ULONG type, ULONG *props, WORD count)
+struct IFFHandle* openIFF(STRPTR name, LONG mode)
 {
-    if (PropChunks(iff, props, count) == 0)
-    {
-        if (StopChunk(iff, type, ID_BODY) == 0)
-        {
-            return(TRUE);
-        }
-    }
-    return(FALSE);
-}
-
-/* Alloc, open and scan IFF file. */
-struct IFFHandle *scanIFF(STRPTR name, ULONG type, ULONG *props, WORD count)
-{
-    struct IFFHandle *iff;
+    struct IFFHandle* iff;
 
     if (iff = AllocIFF())
     {
-        if (iff->iff_Stream = Open(name, MODE_OLDFILE))
+        BPTR f;
+
+        if (iff->iff_Stream = f = Open(name, mode == IFFF_WRITE ? MODE_NEWFILE : MODE_OLDFILE))
         {
+            LONG err;
+
             InitIFFasDOS(iff);
-            if (OpenIFF(iff, IFFF_READ) == 0)
+            if ((err = OpenIFF(iff, mode)) == 0)
             {
-                if (installIFF(iff, type, props, count))
-                {
-                    if (ParseIFF(iff, IFFPARSE_SCAN) == 0)
-                    {
-                        return(iff);
-                    }
-                }
-                CloseIFF(iff);
+                return(iff);
             }
-            Close(iff->iff_Stream);
+            Close(f);
         }
         FreeIFF(iff);
     }
     return(NULL);
 }
 
-/* Close and free IFF. */
-VOID freeIFF(struct IFFHandle *iff)
+void closeIFF(struct IFFHandle* iff)
 {
     CloseIFF(iff);
     Close(iff->iff_Stream);
     FreeIFF(iff);
 }
 
-/* Get and load ColorMap. */
-BOOL loadColorMap(struct IFFHandle *iff, struct ColorMap **cm)
+LONG scanIFF(struct IFFHandle* iff, ULONG type, ULONG* props, WORD count)
 {
-    struct StoredProperty *sp;
-    WORD colors;
-    UBYTE *cmap;
-    WORD c;
+    LONG err;
+    if ((err = PropChunks(iff, props, count)) == 0)
+    {
+        if ((err = StopChunk(iff, type, ID_BODY)) == 0)
+        {
+            if ((err = StopOnExit(iff, type, ID_FORM)) == 0)
+            {
+                if ((err = ParseIFF(iff, IFFPARSE_SCAN)) == 0
+                    || err == IFFERR_EOC
+                    || err == IFFERR_EOF)
+                {
+                    return(err);
+                }
+            }
+        }
+    }
+    return(err);
+}
+
+struct IFFHandle* openILBM(STRPTR name, struct BitMapHeader* bmhd)
+{
+    struct IFFHandle* iff;
+    ULONG props[] =
+    {
+        ID_ILBM, ID_BMHD,
+        ID_ILBM, ID_CMAP
+    };
+
+    if (iff = openIFF(name, IFFF_READ))
+    {
+        if (scanIFF(iff, ID_ILBM, props, 2) == 0)
+        {
+            struct StoredProperty* sp;
+
+            if (sp = FindProp(iff, ID_ILBM, ID_BMHD))
+            {
+                *bmhd = *(struct BitMapHeader* )sp->sp_Data;
+                return(iff);
+            }
+        }
+        closeIFF(iff);
+    }
+    return(NULL);
+}
+
+ULONG* loadColors(struct IFFHandle* iff, WORD* colorCount)
+{
+    struct StoredProperty* sp;
 
     if (sp = FindProp(iff, ID_ILBM, ID_CMAP))
     {
-        colors = sp->sp_Size / 3;
-        cmap = sp->sp_Data;
+        WORD colors = sp->sp_Size / 3;
+        ULONG* pal;
 
-        if (*cm = GetColorMap(colors))
+        if (pal = AllocMem((sp->sp_Size + 2) * sizeof(ULONG), MEMF_PUBLIC))
         {
-            for (c = 0; c < colors; c++)
-            {
-                UBYTE red = *cmap++;
-                UBYTE green = *cmap++;
-                UBYTE blue = *cmap++;
-                SetRGB32CM(*cm, c, RGB(red), RGB(green), RGB(blue));
-            }
-            return(TRUE);
-        }
-    }
-    return(FALSE);
-}
+            WORD i;
+            UBYTE* cmap = sp->sp_Data;
 
-BYTE *getBODYBuffer(struct IFFHandle *iff, struct ContextNode **cn)
-{
-    BYTE *buffer;
-
-    if (*cn = CurrentChunk(iff))
-    {
-        if (buffer = AllocMem(cn->cn_Size, MEMF_PUBLIC))
-        {
-            if (ReadChunkBytes(iff, buffer, cn->cn_Size) == cn->cn_Size)
+            pal[0] = colors << 16;
+            for (i = 1; i <= sp->sp_Size; i++)
             {
-                return(buffer);
+                UBYTE color = *cmap++;
+                pal[i] = RGB(color);
             }
-            FreeMem(buffer, cn->cn_Size);
+            pal[i] = 0L;
+            *colorCount = colors;
+            return(pal);
         }
     }
     return(NULL);
 }
 
-BOOL unpackRow(BYTE **destptr, WORD bpr, BYTE **srcptr, LONG *sizeptr, UBYTE cmp, UBYTE msk)
+void freeColors(ULONG* pal, WORD colors)
 {
-    BYTE *dest = *destptr;
-    BYTE *src = *srcptr;
+    FreeMem(pal, ((colors * 3) + 2) * sizeof(ULONG));
+}
+
+BOOL unpackRow(BYTE** bufptr, LONG* sizeptr, BYTE** planeptr, WORD bpr, WORD cmp)
+{
+    BYTE *buf = *bufptr, *plane = *planeptr;
     LONG size = *sizeptr;
 
     if (cmp == cmpNone)
     {
         if (size < bpr)
+        {
             return(FALSE);
+        }
         size -= bpr;
-        CopyMem(src, dest, bpr);
-        src  += bpr;
-        dest += bpr;
+        CopyMem(buf, plane, bpr);
+        buf += bpr;
+        plane += bpr;
     }
     else if (cmp == cmpByteRun1)
     {
@@ -128,132 +153,110 @@ BOOL unpackRow(BYTE **destptr, WORD bpr, BYTE **srcptr, LONG *sizeptr, UBYTE cmp
         {
             BYTE con;
             if (size < 1)
+            {
                 return(FALSE);
-            size--;
-            if ((con = *src++) >= 0)
+            }
+            if ((con = *buf++) >= 0)
             {
                 WORD count = con + 1;
                 if (size < count || bpr < count)
+                {
                     return(FALSE);
+                }
                 size -= count;
-                bpr  -= count;
+                bpr -= count;
                 while (count-- > 0)
-                    *dest++ = *src++;
+                {
+                    *plane++ = *buf++;
+                }
             }
             else if (con != -128)
             {
                 WORD count = (-con) + 1;
                 BYTE data;
                 if (size < 1 || bpr < count)
+                {
                     return(FALSE);
+                }
                 size--;
                 bpr -= count;
-                data = *src++;
+                data = *buf++;
                 while (count-- > 0)
-                    *dest++ = data;
+                {
+                    *plane++ = data;
+                }
             }
         }
     }
+    else
+    {
+        return(FALSE);
+    }
 
-    *destptr = dest;
-    *srcptr = src;
+    *bufptr = buf;
     *sizeptr = size;
+    *planeptr = plane;
     return(TRUE);
 }
 
-BOOL unpackBitMap(struct BitMapHeader *bmhd, struct BitMap *bm, BYTE *buffer, LONG size)
+BOOL unpackBitMap(BYTE *buf, LONG size, struct BitMap* bm, struct BitMapHeader* bmhd)
 {
-    WORD width, height, depth;
-    UBYTE cmp, msk;
-    WORD row, plane;
-    WORD bpr;
-    PLANEPTR planes[8];
+    WORD width  = bmhd->bmh_Width,
+         height = bmhd->bmh_Height,
+         depth  = bmhd->bmh_Depth,
+         bpr    = RowBytes(width),
+         cmp    = bmhd->bmh_Compression,
+         msk    = bmhd->bmh_Masking,
+         plane, row;
 
-    width  = bmhd->bmh_Width;
-    bpr    = RowBytes(width);
-    height = bmhd->bmh_Height;
-    depth  = bmhd->bmh_Depth;
-
-    cmp = bmhd->bmh_Compression;
-    msk = bmhd->bmh_Masking;
-
-    if (cmp != cmpNone && cmp != cmpByteRun1)
-        return(FALSE);
-
-    if (msk != mskNone && msk != mskHasTransparentColor)
-        return(FALSE);
+    PLANEPTR planes[9];
 
     for (plane = 0; plane < depth; plane++)
+    {
         planes[plane] = bm->Planes[plane];
+    }
 
     for (row = 0; row < height; row++)
+    {
         for (plane = 0; plane < depth; plane++)
-            if (!unpackRow(&planes[plane], bpr, &buffer, &size, cmp, msk))
+        {
+            if (!unpackRow(&buf, &size, &planes[plane], bpr, cmp))
+            {
                 return(FALSE);
-
+            }
+        }
+    }
     return(TRUE);
 }
 
-/* Alloc and load BitMap. */
-BOOL loadBitMap(struct IFFHandle *iff, struct BitMap **bm)
+struct BitMap* loadBitMap(struct IFFHandle* iff, struct BitMapHeader* bmhd)
 {
-    struct StoredProperty *sp;
-    struct BitMapHeader *bmhd;
-    WORD width, height, depth;
-    struct ContextNode *cn;
-    BYTE *buffer;
-    LONG size;
+    struct BitMap* bm;
 
-    if (sp = FindProp(iff, ID_ILBM, ID_BMHD))
+    if (bm = AllocBitMap(bmhd->bmh_Width, bmhd->bmh_Height, bmhd->bmh_Depth, 0, NULL))
     {
-        bmhd = (struct BitMapHeader *)sp->sp_Data;
-        width  = bmhd->bmh_Width;
-        height = bmhd->bmh_Height;
-        depth  = bmhd->bmh_Depth;
+        struct ContextNode* cn;
 
-        if (*bm = AllocBitMap(width, height, depth, 0, NULL))
+        if ((cn = CurrentChunk(iff)) && cn->cn_Type == ID_ILBM && cn->cn_ID == ID_BODY)
         {
-            /* Read packed ILBM BODY chunk */
-            if (buffer = getBODYBuffer(iff, &cn))
+            BYTE* buf;
+            LONG size = cn->cn_Size;
+            BOOL success = FALSE;
+
+            if (buf = AllocMem(size, MEMF_PUBLIC))
             {
-                size = cn->cn_Size;
-                if (unpackBitMap(bmhd, *bm, buffer, size))
+                if (ReadChunkBytes(iff, buf, size) == size)
                 {
-                    FreeMem(buffer, size);
-                    return(TRUE);
+                    success = unpackBitMap(buf, size, bm, bmhd);
                 }
-                FreeMem(buffer, size);
+                FreeMem(buf, size);
+                if (success)
+                {
+                    return(bm);
+                }
             }
-            FreeBitMap(*bm);
         }
+        FreeBitMap(bm);
     }
-    return(FALSE);
+    return(NULL);
 }
-
-/* Load IFF ILBM into BitMap/ColorMap. */
-BOOL loadILBM(STRPTR name, struct BitMap **bm, struct ColorMap **cm)
-{
-    struct IFFHandle *iff;
-    ULONG props[] =
-    {
-        ID_ILBM, ID_BMHD,
-        ID_ILBM, ID_CMAP
-    };
-    BOOL result = FALSE;
-
-    if (iff = scanIFF(name, ID_ILBM, props, 2))
-    {
-        loadColorMap(iff, cm);
-        result = loadBitMap(iff, bm);
-        freeIFF(iff);
-    }
-    return(result);
-}
-
-VOID unloadILBM(struct BitMap *bm, struct ColorMap *cm)
-{
-    FreeBitMap(bm);
-    FreeColorMap(cm);
-}
-
-/* EOF */

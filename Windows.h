@@ -1,13 +1,26 @@
 
+/*
+**  (C)2018-2020 Robert Szacki Software House
+**
+**  » Magazyn «
+**
+**  $Id$
+*/
+
 #ifndef WINDOWS_H
 #define WINDOWS_H
 
-#define ESC_KEY   0x45
-#define UP_KEY    0x4C
-#define DOWN_KEY  0x4D
-#define RIGHT_KEY 0x4E
-#define LEFT_KEY  0x4F
+#ifndef EXEC_TYPES_H
+#include <exec/types.h>
+#endif
 
-struct Window *openBackdrop(struct Screen *s);
+struct windowInfo
+{
+    struct screenInfo* si;
+    UWORD left, top, width, height;
+};
+
+void blitBitMap(struct BitMap *bm, WORD srcx, WORD srcy, struct windowInfo *wi, WORD destx, WORD desty, WORD width, WORD height);
+void drawBackground(struct windowInfo *wi, struct BitMap *bm, WORD srcleft, WORD srctop, WORD width, WORD height);
 
 #endif /* WINDOWS_H */
