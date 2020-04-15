@@ -1,26 +1,72 @@
 
-#include <exec/lists.h>
+/* Game.h */
 
-#include "Fields.h"
-#include "Objects.h"
+#include <exec/types.h>
+
+#define BOARD_WIDTH  20
+#define BOARD_HEIGHT 16
+
+/* Template size */
+
+#define TMP_WIDTH    20
+#define TMP_HEIGHT   16
 
 enum
 {
-    ACTION_LEAVE_FIELD, /* Leave field */
-    ACTION_ENTER_FIELD, /* Enter field */
-    ACTION_COUNT
+    FLOOR_BACKGROUND,
+    FLOOR_NORMAL,
+    FLOOR_FLAGSTONE,
+    FLOOR_WALL
 };
 
-struct Game
+enum
 {
-    struct Board *board; /* Active board */
-    struct Board *backupBoard; /* For game-restart */
-    struct List objectList; /* List of objects */
-    WORD boxes, placedBoxes; /* Amount of boxes */
+    OBJECT_BOX,
+    OBJECT_HERO
 };
 
-/* Field state handlers array */
-extern LONG (*fieldStateHandlers[FT_COUNT])(WORD action, struct Game *game, struct Board *board, WORD x, WORD y);
-extern LONG (*objectStateHandlers[OT_COUNT])(WORD action, struct Game *game, struct Object *obj);
+struct tile
+{
+    UBYTE floor, objectID; /* Floor type and object identifier */
+};
 
-extern LONG moveObject(struct Game *game, struct Object *obj, WORD dx, WORD dy);
+struct object
+{
+    WORD kind;
+    UBYTE active;
+    UBYTE id;
+    WORD x, y; /* Position */
+    WORD frame; /* Active frame */
+    WORD offset; /* Movement offset */
+};
+
+struct board
+{
+    struct Screen *screen;
+    struct tile tiles[BOARD_HEIGHT][BOARD_WIDTH];
+    struct object *objs; /* Array of objects */
+    WORD objCount; /* Object count */
+    WORD boxCount; /* Amount of boxes */
+    WORD placedCount; /* Amount of placed boxes */
+    WORD keys; /* Amout of keys */
+};
+
+/* Create board template */
+
+BOOL initBoard(struct board *board, WORD tmpwidth, WORD tmpheight);
+
+BOOL loadBoard(struct board *board);
+
+BOOL saveBoard(struct board *board);
+
+/* Free memory */
+
+void freeBoard(struct board *board);
+
+void drawBoard(struct board *board);
+
+void drawFloor(struct board *board, WORD x, WORD y);
+
+/* Move object in given direction */
+
+void moveObject(struct board *board, struct object *obj, WORD offsetx, WORD offsety);

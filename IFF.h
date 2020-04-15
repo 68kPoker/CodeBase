@@ -1,31 +1,36 @@
 
-/*
-**  (C)2018-2020 Robert Szacki Software House
-**
-**  » Magazyn «
-**
-**  $Id$
-*/
+/* IFF.h */
 
-#ifndef IFF_H
-#define IFF_H
-
-#ifndef EXEC_TYPES_H
 #include <exec/types.h>
-#endif
 
-#define RowBytes(w) ((((w)+15)>>4)<<1)
-#define RGB(v) ((v)|((v)<<8)|((v)<<16)|((v)<<24))
+struct scanInfo
+{
+    BOOL clip;
+    ULONG type; /* Requested file type */
+    ULONG *props; /* Requested properties */
+    ULONG *stops; /* Requested stops */
+};
 
-struct IFFHandle *openIFF   (STRPTR name, LONG mode);
-struct IFFHandle *openILBM  (STRPTR name, struct BitMapHeader* bmhd);
+/* For buffered reads */
 
-void closeIFF   (struct IFFHandle* iff);
-LONG scanIFF    (struct IFFHandle* iff, ULONG type, ULONG* props, WORD count);
+struct buffer
+{
+    BYTE *buf; /* Beginning of buffer */
+    LONG size; /* Total size of buffer */
+    BYTE *end; /* Pointer to end of data */
+    BYTE *cur; /* Current pointer */
+};
 
-ULONG*  loadColors(struct IFFHandle* iff, WORD* colorCount);
-void    freeColors(ULONG* colors, WORD colors);
+/* Open and scan IFF */
 
-struct BitMap* loadBitMap(struct IFFHandle* iff, struct BitMapHeader* bmhd);
+struct IFFHandle *scanIFF(struct scanInfo *, STRPTR name);
 
-#endif /* IFF_H */
+void initBuffer(struct buffer *buffer);
+
+/* Buffered ReadChunkBytes() */
+
+LONG readChunkBytes(struct IFFHandle *, BYTE *, LONG count, struct buffer *);
+
+/* Close opened IFF */
+
+void closeIFF(struct IFFHandle *, struct scanInfo *);

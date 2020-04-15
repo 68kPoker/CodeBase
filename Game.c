@@ -1,76 +1,63 @@
 
 #include "Game.h"
+#include "Graphics.h"
 
-LONG handleHero(WORD action, struct Game *game, struct Object *obj);
-LONG handleBox(WORD action, struct Game *game, struct Object *obj);
+#include <dos/dos.h>
+#include <clib/graphics_protos.h>
+#include <clib/dos_protos.h>
 
-LONG (*objectStateHandlers[OT_COUNT])(WORD action, struct Game *game, struct Object *obj) =
+/* Create board template */
+
+BOOL initBoard(struct board *board, WORD tmpwidth, WORD tmpheight)
 {
-    handleBox, /* Box */
-    handleHero
-};
-
-LONG (*fieldStateHandlers[FT_COUNT])(WORD action, struct Game *game, struct Board *board, WORD x, WORD y) =
-{
-};
-
-LONG handleBox(WORD action, struct Game *game, struct Object *obj)
-{
-    struct Board *board = game->board;
-    WORD x, y;
-
-    if (action == ACTION_LEAVE_FIELD)
-    {
-        x = obj->state.prevX;
-        y = obj->state.prevY;
-
-        /* Check for flagstone */
-        struct Field *field = &board->fields[y][x];
-
-        if (field->type == FT_FLAGSTONE)
-        {
-            /* Release the flagstone */
-            game->placedBoxes--;
-        }
-    }
-    else if (action == ACTION_ENTER_FIELD)
-    {
-        x = obj->x;
-        y = obj->y;
-
-        /* Check for flagstone */
-        struct Field *field = &board->fields[y][x];
-
-        if (field->type == FT_FLAGSTONE)
-        {
-            /* Activate the flagstone */
-            game->placedBoxes++;
-        }
-    }
 }
 
-LONG handleHero(WORD action, struct Game *game, struct Object *obj)
+BOOL loadBoard(struct board *board)
 {
-
 }
 
-LONG moveObject(struct Game *game, struct Object *obj, WORD dx, WORD dy)
+BOOL saveBoard(struct board *board)
 {
-    struct Board *board = game->board;
+}
 
-    obj->state.prevX = obj->x;
-    obj->state.prevY = obj->y;
-    obj->x += dx;
-    obj->y += dy;
+/* Free memory */
 
-    struct Field *field = &board->fields[obj->state.prevY][obj->state.prevX];
-    field->object = NULL;
+void freeBoard(struct board *board)
+{
+}
 
-    field = &board->fields[obj->y][obj->x];
-    field->object = obj;
+void drawBoard(struct board *board)
+{
+}
 
-    objectStateHandlers[obj->type](ACTION_LEAVE_FIELD, game, obj);
-    objectStateHandlers[obj->type](ACTION_ENTER_FIELD, game, obj);
+void drawFloor(struct board *board, WORD x, WORD y)
+{
+}
 
-    obj->state.updated = TRUE; /* Updated position */
+/* Move object in given direction */
+
+void moveObject(struct board *board, struct object *obj, WORD offsetx, WORD offsety)
+{
+}
+
+int main()
+{
+    struct Screen *s;
+    struct BitMap *bm[2];
+    struct gfxInfo gi = { 0 };
+
+    if (loadGraphics(&gi, "Data/Warehouse.iff"))
+    {
+        if (bm[0] = createBitMap(&gi))
+        {
+            if (s = openScreen(bm[0], &gi))
+            {
+                Delay(300);
+                closeScreen(s);
+            }
+            FreeBitMap(bm[0]);
+        }
+        unloadGraphics(&gi);
+    }
+    return(RETURN_OK);
 }
