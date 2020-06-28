@@ -1,1 +1,0 @@
-This code is FREEWARE, thus can be distributed without changes to the archive!
