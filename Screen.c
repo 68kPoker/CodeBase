@@ -1,225 +1,256 @@
 
-#include <exec/types.h>
+/* $Id$ */
+
+/* Ustalenie tryb ekranu, otwarcie ekranu, obsîuga podwójnego buforowania,
+ * synchronizacja buforów.
+ */
+
+#include <stdio.h>
 #include <intuition/screens.h>
-#include <intuition/intuition.h>
+#include <exec/interrupts.h>
+#include <hardware/intbits.h>
+#include <hardware/custom.h>
+#include <exec/memory.h>
+#include <graphics/gfxmacros.h>
 
 #include <clib/exec_protos.h>
-#include <clib/intuition_protos.h>
 #include <clib/graphics_protos.h>
-#include <clib/diskfont_protos.h>
+#include <clib/intuition_protos.h>
 
-#define ESC_KEY 0x45
+#include "Screen.h"
+#include "Blitter.h"
 
-#define DRAW   0 /* dbuf index */
-#define CHANGE 1
+extern __far struct Custom custom; /* Ukîady specjalizowane */
 
-enum
+extern VOID myCopperIs(VOID);
+
+/* Ustalenie trybu ekranu dla danej rozdzielczoôci. Monitor pobierany
+ * jest z domyôlnego ekranu publicznego. Nastëpnie wyliczany jest
+ * tryb ekranu.
+ */
+
+ULONG obtainModeID(UWORD width, UWORD height, UBYTE depth)
 {
-    SIG_DRAW,
-    SIG_CHANGE,
-    SIG_IDCMP,
-    SOURCES
-};
+    struct Screen *pubScreen;
 
-struct screenInfo
-{
-    struct TextFont     *tf; /* Opened disk font */
-    struct bitMapInfo
+    if (pubScreen = LockPubScreen(NULL))
     {
-        struct BitMap       *bm; /* Custom bitmap */
-        struct ScreenBuffer *sb;
-        struct Region       *update; /* Region changed */
-    } bmi[2];
-    struct Screen       *s;
-    struct dBufInfo
-    {
-        struct MsgPort  *port; /* Port */
-        BOOL            safe; /* Safe to draw/change? */
-    } dbi[2];
-    WORD            frame; /* Hidden frame */
-    struct Window   *window; /* Backdrop window */
-};
+        ULONG monitorID = GetVPModeID(&pubScreen->ViewPort) & MONITOR_ID_MASK;
+        ULONG modeID;
+        printf("MonitorID = $%X\n", monitorID);
 
-BOOL initScreen(struct screenInfo *si)
-{
-    struct TextAttr ta =
-    {
-        "helvetica.font", 9,
-        FS_NORMAL,
-        FPF_DISKFONT | FPF_DESIGNED
-    };
-
-    WORD dispWidth  = 320;
-    WORD dispHeight = 256;
-    UBYTE depth = 5;
-    ULONG modeID = LORES_KEY;
-    UBYTE title[] = "Warehouse";
-    ULONG idcmpFlags = IDCMP_RAWKEY | IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE;
-
-    WORD rasWidth  = dispWidth;
-    WORD rasHeight = dispHeight;
-    if (si->tf = OpenDiskFont(&ta))
-    {
-        if (si->bmi[0].bm = AllocBitMap(rasWidth, rasHeight, depth, BMF_DISPLAYABLE|BMF_CLEAR, NULL))
+        if ((modeID = BestModeID(
+            BIDTAG_MonitorID, monitorID,
+            BIDTAG_NominalWidth, width,
+            BIDTAG_NominalHeight, height,
+            BIDTAG_Depth, depth,
+            TAG_DONE)) != INVALID_ID)
         {
-            if (si->s = OpenScreenTags(NULL,
-                SA_Font,    &ta,
-                SA_BitMap,  si->bmi[0].bm,
-                SA_Left,    0,
-                SA_Top,     0,
-                SA_Width,   dispWidth,
-                SA_Height,  dispHeight,
-                SA_Depth,   depth,
-                SA_DisplayID,   modeID,
-                SA_Quiet,   TRUE,
-                SA_ShowTitle,   FALSE,
-                SA_Title,   title,
-                SA_BackFill, LAYERS_NOBACKFILL,
-                TAG_DONE))
-            {
-                if (si->dbi[DRAW].port = CreateMsgPort())
-                {
-                    si->dbi[DRAW].safe = TRUE;
-                    if (si->dbi[CHANGE].port = CreateMsgPort())
-                    {
-                        si->dbi[CHANGE].safe = TRUE;
-                        if (si->bmi[0].sb = AllocScreenBuffer(si->s, si->bmi[0].bm, 0))
-                        {
-                            if (si->bmi[1].bm = AllocBitMap(rasWidth, rasHeight, depth, BMF_DISPLAYABLE, NULL))
-                            {
-                                if (si->bmi[1].sb = AllocScreenBuffer(si->s, si->bmi[1].bm, 0))
-                                {
-                                    si->frame = 1;
-                                    si->bmi[0].sb->sb_DBufInfo->dbi_SafeMessage.mn_ReplyPort = si->dbi[DRAW].port;
-                                    si->bmi[1].sb->sb_DBufInfo->dbi_SafeMessage.mn_ReplyPort = si->dbi[DRAW].port;
-                                    si->bmi[0].sb->sb_DBufInfo->dbi_DispMessage.mn_ReplyPort = si->dbi[CHANGE].port;
-                                    si->bmi[1].sb->sb_DBufInfo->dbi_DispMessage.mn_ReplyPort = si->dbi[CHANGE].port;
-                                    if (si->window = OpenWindowTags(NULL,
-                                        WA_CustomScreen,    si->s,
-                                        WA_Left,            0,
-                                        WA_Top,             0,
-                                        WA_Width,           si->s->Width,
-                                        WA_Height,          si->s->Height,
-                                        WA_Backdrop,        TRUE,
-                                        WA_Borderless,      TRUE,
-                                        WA_Activate,        TRUE,
-                                        WA_RMBTrap,         TRUE,
-                                        WA_SimpleRefresh,   TRUE,
-                                        WA_BackFill,        LAYERS_NOBACKFILL,
-                                        WA_IDCMP,           idcmpFlags,
-                                        WA_ReportMouse,     TRUE,
-                                        TAG_DONE))
-                                    {
-                                        return(TRUE);
-                                    }
-                                    FreeScreenBuffer(si->s, si->bmi[1].sb);
-                                }
-                                FreeBitMap(si->bmi[1].bm);
-                            }
-                            FreeScreenBuffer(si->s, si->bmi[0].sb);
-                        }
-                        DeleteMsgPort(si->dbi[CHANGE].port);
-                    }
-                    DeleteMsgPort(si->dbi[DRAW].port);
-                }
-                CloseScreen(si->s);
-            }
-            FreeBitMap(si->bmi[0].bm);
+            printf("ModeID: $%X\n", modeID);
+            UnlockPubScreen(NULL, pubScreen);
+            return(modeID);
         }
-        CloseFont(si->tf);
+        else
+            printf("Couldn't find best mode ID!\n");
+        UnlockPubScreen(NULL, pubScreen);
+    }
+    else
+        printf("Couldn't lock default public screen!\n");
+    return(INVALID_ID);
+}
+
+/* Ustalenie parametrów trybu ekranu */
+
+BOOL getModeIDInfo(ULONG modeID, struct Rectangle *dClip)
+{
+    DisplayInfoHandle dih;
+    struct DimensionInfo dimInfo;
+
+    if (dih = FindDisplayInfo(modeID))
+    {
+        if (GetDisplayInfoData(dih, (UBYTE *)&dimInfo, sizeof(dimInfo), DTAG_DIMS, modeID) > 0)
+        {
+            *dClip = dimInfo.Nominal;
+            printf("Display Info:\n");
+            printf("Nominal: %d %d\n", dClip->MaxX - dClip->MinX + 1, dClip->MaxY - dClip->MinY + 1);
+            return(TRUE);
+        }
+        else
+            printf("Couldn't get display info data!\n");
+    }
+    else
+        printf("Couldn't find display info!\n");
+    return(FALSE);
+}
+
+/* Alokacja bitmap i otwarcie ekranu */
+
+struct Screen *openScreen(STRPTR title, ULONG modeID, UBYTE depth, struct screenInfo *scrInfo)
+{
+    struct Rectangle dClip;
+
+    if (getModeIDInfo(modeID, &dClip))
+    {
+        WORD rasWidth = dClip.MaxX - dClip.MinX + 1;
+        WORD rasHeight = dClip.MaxY - dClip.MinY + 1;
+
+        if (scrInfo->scrBitMaps[0] = AllocBitMap(rasWidth, rasHeight, depth, BMF_DISPLAYABLE|BMF_CLEAR, NULL))
+        {
+            if (scrInfo->scrBitMaps[1] = AllocBitMap(rasWidth, rasHeight, depth, BMF_DISPLAYABLE|BMF_CLEAR, NULL))
+            {
+                struct Screen *screen;
+
+                if (scrInfo->screen = screen = OpenScreenTags(NULL,
+                    SA_DClip, &dClip,
+                    SA_Depth, depth,
+                    SA_DisplayID, modeID,
+                    SA_Quiet, TRUE,
+                    SA_Title, title,
+                    SA_Exclusive, TRUE,
+                    SA_BackFill, LAYERS_NOBACKFILL,
+                    SA_BitMap, scrInfo->scrBitMaps[0],
+                    SA_ShowTitle, FALSE,
+                    TAG_DONE))
+                {
+                    if (scrInfo->dbufInfo = AllocDBufInfo(&screen->ViewPort))
+                    {
+                        scrInfo->safeToWrite = TRUE;
+                        scrInfo->toggleFrame = 1;
+                        if (scrInfo->safePort = CreateMsgPort())
+                        {
+                            scrInfo->dbufInfo->dbi_SafeMessage.mn_ReplyPort = scrInfo->safePort;
+                            scrInfo->dClip = dClip;
+                            screen->RastPort.RP_User = (APTR)&scrInfo->dClip;
+
+                            screen->UserData = (APTR)scrInfo;
+                            return(screen);
+                        }
+                        FreeDBufInfo(scrInfo->dbufInfo);
+                    }
+                    CloseScreen(screen);
+                }
+                FreeBitMap(scrInfo->scrBitMaps[1]);
+            }
+            FreeBitMap(scrInfo->scrBitMaps[0]);
+        }
+    }
+    return(NULL);
+}
+
+/* Dodaj obsîugë Coppera */
+
+BOOL addCopper(struct screenInfo *scrInfo, UBYTE pri)
+{
+    struct UCopList *ucl;
+
+    scrInfo->copperIs.is_Node.ln_Name = "Game";
+    scrInfo->copperIs.is_Node.ln_Pri = pri;
+    scrInfo->copperIs.is_Code = myCopperIs;
+    scrInfo->copperIs.is_Data = &scrInfo->copper;
+
+    scrInfo->copper.task = FindTask(NULL);
+    scrInfo->copper.viewPort = &scrInfo->screen->ViewPort;
+
+    if ((scrInfo->copper.signal = AllocSignal(-1)) != -1)
+    {
+        if (ucl = AllocMem(sizeof(*ucl), MEMF_PUBLIC|MEMF_CLEAR))
+        {
+            const WORD copInsCount = 6;
+
+            CINIT(ucl, copInsCount);
+            CWAIT(ucl, 0, 0);
+            CMOVE(ucl, custom.intreq, INTF_SETCLR|INTF_COPER);
+            CEND(ucl);
+
+            AddIntServer(INTB_COPER, &scrInfo->copperIs);
+
+            Forbid();
+            scrInfo->screen->ViewPort.UCopIns = ucl;
+            Permit();
+
+            RethinkDisplay();
+            return(TRUE);
+        }
+        FreeSignal(scrInfo->copper.signal);
     }
     return(FALSE);
 }
 
-void loopScreen(struct screenInfo *si)
+BOOL addRegions(struct screenInfo *scrInfo)
 {
-    ULONG signals[SOURCES] = { 0 }, total = 0;
-    BOOL done = FALSE;
-
-    signals[SIG_DRAW] = 1L << si->dbi[DRAW].port->mp_SigBit;
-    signals[SIG_CHANGE] = 1L << si->dbi[CHANGE].port->mp_SigBit;
-    signals[SIG_IDCMP] = 1L << si->window->UserPort->mp_SigBit;
-
-    while (!done)
+    if (scrInfo->syncRegion[0] = NewRegion())
     {
-        ULONG result;
-        total = signals[SIG_DRAW] | signals[SIG_CHANGE] | signals[SIG_IDCMP];
-        result = Wait(total);
-
-        if (result & signals[SIG_DRAW])
+        if (scrInfo->syncRegion[1] = NewRegion())
         {
-            /* Safe to draw */
-            if (!si->dbi[DRAW].safe)
-            {
-                while (!si->dbi[DRAW].port)
-                {
-                    WaitPort(si->dbi[DRAW].port);
-                }
-                si->dbi[DRAW].safe = TRUE;
-            }
+            return(TRUE);
         }
-        if (result & signals[SIG_CHANGE])
-        {
-            /* Safe to draw */
-            if (!si->dbi[CHANGE].safe)
-            {
-                while (!si->dbi[CHANGE].port)
-                {
-                    WaitPort(si->dbi[CHANGE].port);
-                }
-                si->dbi[CHANGE].safe = TRUE;
-            }
-        }
-        if (result & signals[SIG_IDCMP])
-        {
-            /* IDCMP */
-            struct MsgPort *mp = si->window->UserPort;
-            struct IntuiMessage *msg;
-            while (msg = (struct IntuiMessage *)GetMsg(mp))
-            {
-                ULONG class = msg->Class;
-                UWORD code  = msg->Code;
-                WORD  mx    = msg->MouseX;
-                WORD  my    = msg->MouseY;
-                APTR  iaddr = msg->IAddress;
-
-                ReplyMsg((struct Message *)msg);
-
-                if (class == IDCMP_RAWKEY)
-                {
-                    if (code == ESC_KEY)
-                    {
-                        done = TRUE;
-                    }
-                }
-            }
-        }
+        DisposeRegion(scrInfo->syncRegion[0]);
     }
+    return(FALSE);
 }
 
-void closeScreen(struct screenInfo *si)
+VOID syncScreen(struct screenInfo *scrInfo)
 {
-    CloseWindow(si->window);
-    if (!si->dbi[CHANGE].safe)
+    struct RegionRectangle *regRect;
+    struct Rectangle *rect;
+    WORD frame = scrInfo->toggleFrame;
+    WORD baseX, baseY, rectX, rectY;
+    WORD width, height;
+
+    rect = &scrInfo->syncRegion[frame]->bounds;
+    baseX = rect->MinX;
+    baseY = rect->MinY;
+
+    XorRegionRegion(scrInfo->syncRegion[frame], scrInfo->syncRegion[frame ^ 1]);
+    AndRegionRegion(scrInfo->syncRegion[frame], scrInfo->syncRegion[frame ^ 1]);
+    AndRectRegion(scrInfo->syncRegion[frame ^ 1], &scrInfo->dClip);
+
+    for (regRect = scrInfo->syncRegion[frame ^ 1]->RegionRectangle; regRect != NULL; regRect = regRect->Next)
     {
-        while (!si->dbi[CHANGE].port)
+        rect = &regRect->bounds;
+        rectX = rect->MinX;
+        rectY = rect->MinY;
+        width = rect->MaxX - rectX + 1;
+        height = rect->MaxY - rectY + 1;
+
+        rectX += baseX;
+        rectY += baseY;
+
+        drawTile(scrInfo->scrBitMaps[frame], rectX, rectY, scrInfo->scrBitMaps[frame ^ 1], rectX, rectY, width, height);
+    }
+    ClearRegion(scrInfo->syncRegion[frame ^ 1]);
+}
+
+BOOL remRegions(struct screenInfo *scrInfo)
+{
+    DisposeRegion(scrInfo->syncRegion[1]);
+    DisposeRegion(scrInfo->syncRegion[0]);
+}
+
+VOID remCopper(struct screenInfo *scrInfo)
+{
+    RemIntServer(INTB_COPER, &scrInfo->copperIs);
+    FreeSignal(scrInfo->copper.signal);
+}
+
+/* Zamkniëcie ekranu */
+
+VOID closeScreen(struct Screen *screen)
+{
+    struct screenInfo *scrInfo = (struct screenInfo *)screen->UserData;
+
+    /* Sprawdzamy czy odebrano wiadomoôci */
+
+    if (!scrInfo->safeToWrite)
+    {
+        while (!GetMsg(scrInfo->safePort))
         {
-            WaitPort(si->dbi[CHANGE].port);
+            WaitPort(scrInfo->safePort);
         }
     }
-    if (!si->dbi[DRAW].safe)
-    {
-        while (!si->dbi[DRAW].port)
-        {
-            WaitPort(si->dbi[DRAW].port);
-        }
-    }
-    FreeScreenBuffer(si->s, si->bmi[1].sb);
-    FreeBitMap(si->bmi[1].bm);
-    FreeScreenBuffer(si->s, si->bmi[0].sb);
-    DeleteMsgPort(si->dbi[CHANGE].port);
-    DeleteMsgPort(si->dbi[DRAW].port);
-    CloseScreen(si->s);
-    FreeBitMap(si->bmi[0].bm);
-    CloseFont(si->tf);
+    DeleteMsgPort(scrInfo->safePort);
+    FreeDBufInfo(scrInfo->dbufInfo);
+    CloseScreen(screen);
+    FreeBitMap(scrInfo->scrBitMaps[1]);
+    FreeBitMap(scrInfo->scrBitMaps[0]);
 }
