@@ -1,172 +1,178 @@
 
+/* $Id: Windows.c,v 1.1 12/.0/.2 .1:.1:.2 Robert Exp Locker: Robert $ */
+
+#include <graphics/gfx.h>
+#include <exec/nodes.h>
 #include <intuition/intuition.h>
-#include <clib/exec_protos.h>
+
+#include <clib/alib_protos.h>
 #include <clib/intuition_protos.h>
-#include <clib/gadtools_protos.h>
+#include <clib/exec_protos.h>
 #include <clib/graphics_protos.h>
+#include <clib/layers_protos.h>
 
-#include "Screen.h"
-#include "Windows.h"
+typedef void( *draw   )( struct window *w, struct RastPort     *rp  );
+typedef void( *handle )( struct window *w, struct IntuiMessage *msg );
 
-struct Window *openWindow(struct Screen *screen)
+struct window
 {
-    struct Window *win;
+    struct Node      node; /* From bottom-most to top-most */
+    struct Rectangle rect;
+    draw             draw;
+    handle           handle;
 
-    if (win = OpenWindowTags(NULL,
-        WA_CustomScreen,    screen,
-        WA_Left,            0,
-        WA_Top,             0,
-        WA_Width,           screen->Width,
-        WA_Height,          screen->Height,
-        WA_Backdrop,        TRUE,
-        WA_Borderless,      TRUE,
-        WA_Activate,        TRUE,
-        WA_RMBTrap,         TRUE,
-        WA_IDCMP,           IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
-        WA_ReportMouse,     TRUE,
-        WA_SimpleRefresh,   TRUE,
-        WA_BackFill,        LAYERS_NOBACKFILL,
-        TAG_DONE))
-    {
-        return(win);
-    }
-    return(NULL);
-}
+    struct Rectangle prev[ 2 ];
+};
 
-VOID updateBoard(struct Window *win, struct boardInfo *board)
+void drawWindow( struct window *w, struct RastPort *rp )
 {
-    WORD xPos, yPos;
-    struct screenInfo *scrInfo = (struct screenInfo *)win->WScreen->UserData;
-    struct RastPort *rastPort = win->RPort;
-    WORD toggleFrame = scrInfo->toggleFrame;
+    struct window *v;
 
-    for (yPos = 0; yPos < BOARD_HEIGHT; yPos++)
+    struct Region *aux, *prev;
+
+    if (aux = NewRegion() )
     {
-        for (xPos = 0; xPos < BOARD_WIDTH; xPos++)
+        OrRectRegion( aux, &w->rect );
+        for( v = ( struct window * )w->node.ln_Succ; v->node.ln_Succ != NULL; v = ( struct window * )v->node.ln_Succ )
         {
-            struct tileInfo *tile = &board->tileArray[yPos][xPos];
-            if (tile->updateFlag)
-            {
-                struct Rectangle rect;
-                rect.MinX = xPos << 4;
-                rect.MinY = yPos << 4;
-                rect.MaxX = rect.MinX + 15;
-                rect.MaxY = rect.MinY + 15;
-
-                SetAPen(rastPort, 2);
-
-                drawTileRastPort(scrInfo->gfxBitMap, 0, 0, rastPort, rect.MinX, rect.MinY, 16, 16);
-                OrRectRegion(scrInfo->syncRegion[toggleFrame], &rect);
-
-                tile->updateFlag = FALSE;
-            }
+            ClearRectRegion( aux, &v->rect );
         }
+        prev = InstallClipRegion( rp->Layer, aux );
+        w->draw( w, rp );
+        InstallClipRegion( rp->Layer, prev );
+        DisposeRegion( aux );
     }
 }
 
-
-BOOL mainLoop(struct Window *win, struct boardInfo *board)
+void openWindow( struct List *list, struct window *w, struct Rectangle *rect, draw draw, handle handle, struct RastPort *rp )
 {
-    ULONG signalMasks[SIGNAL_COUNT], totalMask;
-    BOOL done = FALSE;
-    WORD nSig;
-    struct screenInfo *scrInfo = (struct screenInfo *)win->WScreen->UserData;
-    struct MsgPort *userPort = win->UserPort, *safePort = scrInfo->safePort;
-    WORD toggleFrame = 1;
-    UBYTE text[5];
-    WORD counter = 0;
-    BOOL paintMode = FALSE;
-    WORD prevX = 0, prevY = 0;
+    AddTail( list, &w->node );
 
-    signalMasks[SIGNAL_WINDOW] = 1L << userPort->mp_SigBit;
-    signalMasks[SIGNAL_SAFE] = 1L << safePort->mp_SigBit;
-    signalMasks[SIGNAL_COPPER] = 1L << scrInfo->copper.signal;
+    w->rect   = *rect;
+    w->draw   = draw;
+    w->handle = handle;
+    draw( w, rp );
+    w->prev[ 0 ] = w->prev[ 1 ] = *rect;
+}
 
-    totalMask = 0L;
-    for (nSig = 0; nSig < SIGNAL_COUNT; nSig++)
+void refreshWindows( struct window *w, struct RastPort *rp, struct Region *reg )
+{
+    struct window *v;
+    struct Region *aux, *prev;
+
+    if (aux = NewRegion() )
     {
-        totalMask |= signalMasks[nSig];
-    }
+        for( v = ( struct window * )w->node.ln_Pred; v->node.ln_Pred != NULL; v = ( struct window * )v->node.ln_Pred )
+        {
+            ClearRegion( aux );
+            OrRectRegion( aux, &v->rect );
+            AndRegionRegion( reg, aux );
 
-    while (!done)
+            prev = InstallClipRegion( rp->Layer, aux );
+            v->draw( v, rp );
+            InstallClipRegion( rp->Layer, prev );
+        }
+        DisposeRegion( aux );
+    }
+}
+
+void closeWindow( struct window *w, struct RastPort *rp )
+{
+    struct Region *reg;
+
+    if( reg = NewRegion() )
     {
-        ULONG resultMask = Wait(totalMask);
-
-        if (resultMask & signalMasks[SIGNAL_WINDOW])
-        {
-            struct IntuiMessage *msg;
-
-            while (msg = GT_GetIMsg(userPort))
-            {
-                WORD tileX = msg->MouseX >> 4;
-                WORD tileY = msg->MouseY >> 4;
-                if (msg->Class == IDCMP_RAWKEY)
-                {
-                    if (msg->Code == ESC_KEY)
-                    {
-                        done = TRUE;
-                    }
-                }
-                else if (msg->Class == IDCMP_MOUSEBUTTONS)
-                {
-                    if (msg->Code == IECODE_LBUTTON)
-                    {
-                        paintMode = TRUE;
-                        board->tileArray[tileY][tileX].updateFlag = TRUE;
-                        prevX = tileX;
-                        prevY = tileY;
-                    }
-                    else if (msg->Code == (IECODE_LBUTTON|IECODE_UP_PREFIX))
-                    {
-                        paintMode = FALSE;
-                    }
-                }
-                else if (msg->Class == IDCMP_MOUSEMOVE)
-                {
-                    if (paintMode && (prevX != tileX || prevY != tileY))
-                    {
-                        board->tileArray[tileY][tileX].updateFlag = TRUE;
-                        prevX = tileX;
-                        prevY = tileY;
-                    }
-                }
-                GT_ReplyIMsg(msg);
-            }
-        }
-
-        if (resultMask & signalMasks[SIGNAL_SAFE])
-        {
-            struct RastPort *rastPort = win->RPort;
-            struct TextFont *font = rastPort->Font;
-
-            rastPort->BitMap = scrInfo->scrBitMaps[toggleFrame];
-
-            if (!scrInfo->safeToWrite)
-            {
-                while (!GetMsg(safePort))
-                {
-                    WaitPort(safePort);
-                }
-                scrInfo->safeToWrite = TRUE;
-            }
-
-            updateBoard(win, board);
-
-            Move(rastPort, 0, font->tf_Baseline);
-            SetAPen(rastPort, 1);
-            sprintf(text, "%4d", counter++);
-            Text(rastPort, text, 4);
-
-            syncScreen(scrInfo);
-        }
-
-        if ((resultMask & signalMasks[SIGNAL_COPPER]) && scrInfo->safeToWrite)
-        {
-            WaitBlit();
-            ChangeVPBitMap(&scrInfo->screen->ViewPort, scrInfo->scrBitMaps[toggleFrame], scrInfo->dbufInfo);
-            scrInfo->safeToWrite = FALSE;
-            scrInfo->toggleFrame = toggleFrame ^= 1;
-        }
+        OrRectRegion( reg, &w->rect );
+        refreshWindows( w, rp, reg );
+        DisposeRegion( reg );
     }
-    return(TRUE);
+}
+
+void moveWindow( struct window *w, struct RastPort *rp, UWORD frame )
+{
+    struct Region *reg;
+
+    if( reg = NewRegion() )
+    {
+        OrRectRegion( reg, &w->prev[ frame ] );
+        ClearRectRegion( reg, &w->rect );
+        refreshWindows( w, rp, reg );
+        w->draw( w, rp );
+        DisposeRegion( reg );
+    }
+}
+
+void myDraw( struct window *w, struct RastPort *rp )
+{
+    static UBYTE pen = 0;
+    SetAPen( rp, pen++ );
+    SetOutlinePen( rp, 1 );
+    RectFill( rp, w->rect.MinX, w->rect.MinY, w->rect.MaxX, w->rect.MaxY );
+}
+
+int main( void )
+{
+    struct Screen *s;
+    struct Rectangle dclip = { 0, 0, 319, 255 };
+
+    if( s = OpenScreenTags( NULL,
+        SA_DClip,   &dclip,
+        SA_Depth,   5,
+        SA_DisplayID,   LORES_KEY,
+        SA_Quiet,   TRUE,
+        SA_Exclusive,   TRUE,
+        SA_ShowTitle,   FALSE,
+        SA_BackFill,    LAYERS_NOBACKFILL,
+        TAG_DONE ) )
+    {
+        struct Window *w;
+
+        if( w = OpenWindowTags( NULL,
+            WA_CustomScreen,    s,
+            WA_Left,    0,
+            WA_Top,     0,
+            WA_Width,   s->Width,
+            WA_Height,  s->Height,
+            WA_Backdrop,    TRUE,
+            WA_Borderless,  TRUE,
+            WA_Activate,    TRUE,
+            WA_RMBTrap,     TRUE,
+            WA_IDCMP,       IDCMP_MOUSEBUTTONS,
+            WA_SimpleRefresh,   TRUE,
+            WA_BackFill,    LAYERS_NOBACKFILL,
+            TAG_DONE ) )
+        {
+            struct List list;
+            struct Rectangle rect = { 0, 0, 319, 255 };
+            struct RastPort *rp = w->RPort;
+            struct window win[ 2 ];
+
+            NewList( &list );
+
+            openWindow( &list, &win[ 0 ], &rect, myDraw, NULL, rp );
+            rect.MinX = 32;
+            rect.MinY = 32;
+            rect.MaxX = 32 + 64 - 1;
+            rect.MaxY = 32 + 64 - 1;
+            openWindow( &list, &win[ 1 ], &rect, myDraw, NULL, rp );
+
+            Delay( 200 );
+
+            win[ 1 ].rect.MinX += 32;
+            win[ 1 ].rect.MinY += 32;
+            win[ 1 ].rect.MaxX += 32;
+            win[ 1 ].rect.MaxY += 32;
+
+            moveWindow( &win[ 1 ], rp, 0 );
+
+            Delay( 200 );
+
+            closeWindow( &win[ 1 ], rp );
+
+            WaitPort( w->UserPort );
+            CloseWindow( w );
+        }
+        CloseScreen( s );
+    }
+    return( 0 );
 }
