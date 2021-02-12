@@ -1,5 +1,7 @@
 # Warehouse (Magazyn)
 Sokoban Clone for Amiga
+
+I have setup some classes in order to complete the game. Here's an overview of the general calsses:
 <!DOCTYPE html>
 <html lang="pl">
 
@@ -65,7 +67,7 @@ Proper RastPorts are attached to these structures via UserData pointers. Graphic
 CBoard contains CCells which have their own handler functions to - process and draw.
 Board is associated with window on which it's drawn.
 
-<h3>CIFF</h3>
+<h3>CIFF class</h3>
 
 CIFF contains loader/saver for IFF files: ILBM, 8SVX, (later also SMUS), board data etc.
 All chunk data is loaded using Handlers provided by iffparse.library.
