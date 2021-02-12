@@ -1,7 +1,7 @@
 # Warehouse (Magazyn)
 Sokoban Clone for Amiga
 
-I have setup some classes in order to complete the game. Here's an overview of the general calsses:
+I have setup some classes in order to complete the game. Here's an overview of the general classes:
 <!DOCTYPE html>
 <html lang="pl">
 
