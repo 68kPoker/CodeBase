@@ -1,38 +1,56 @@
 
-/* $Id$ */
+#include <graphics/modeid.h>
+#include <clib/graphics_protos.h>
 
-#include <stdio.h>
-#include <dos/dos.h>
-#include <clib/exec_protos.h>
-
+#include "Screen.h"
+#include "Windows.h"
 #include "Game.h"
 
-static LONG play()
+void prepGfx(struct BitMap *bitMap)
 {
-	struct GUI *gui;
+    struct RastPort rPort;
 
-	/* Let's play */
-	printf("game.play()\n");
+    InitRastPort(&rPort);
+    rPort.BitMap = bitMap;
 
-	/* Init system resources */
-	if (gui = system.init())
-	{
-		WORD i;
-		for (i = 0; i < 100; i++)
-		{
-			Wait(SIGBREAKF_CTRL_C|(1L << gui->cop.signal));
-		}
-		system.cleanup();
-	}
-
-	return(RETURN_OK);
+    SetAPen(&rPort, 3);
+    RectFill(&rPort, 0, 0, 15, 15);
 }
 
-struct Game game = { play };
-
-int main()
+int main(void)
 {
-	game.play();
+    ULONG modeID;
+    const WORD rasWidth = 320, rasHeight = 256, depth = 5;
+    static struct boardInfo board = { 0 };
 
-	return(RETURN_OK);
+    struct Screen *screen;
+    struct screenInfo scrInfo;
+
+    if ((modeID = obtainModeID(rasWidth, rasHeight, depth)) != INVALID_ID)
+    {
+        if (screen = openScreen("Magazyn", modeID, depth, &scrInfo))
+        {
+            if (addCopper(&scrInfo, 1))
+            {
+                if (addRegions(&scrInfo))
+                {
+                    struct Window *win;
+                    if (win = openWindow(screen))
+                    {
+                        if (scrInfo.gfxBitMap = AllocBitMap(320, 256, 5, 0, NULL))
+                        {
+                            prepGfx(scrInfo.gfxBitMap);
+                            mainLoop(win, &board);
+                            FreeBitMap(scrInfo.gfxBitMap);
+                        }
+                        CloseWindow(win);
+                    }
+                    remRegions(&scrInfo);
+                }
+                remCopper(&scrInfo);
+            }
+            closeScreen(screen);
+        }
+    }
+    return(0);
 }

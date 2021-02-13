@@ -1,15 +1,16 @@
 
-/* $Id$ */
-
-/*
- * Game.h
- */
-
 #include <exec/types.h>
 
-#include "System.h"
+#define BOARD_WIDTH  20
+#define BOARD_HEIGHT 16
 
-extern struct Game
+struct tileInfo
 {
-	LONG (*play)();
-} game;
+    UBYTE floorGfx, objectGfx;
+    BOOL updateFlag;
+};
+
+struct boardInfo
+{
+    struct tileInfo tileArray[BOARD_HEIGHT][BOARD_WIDTH];
+};
