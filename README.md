@@ -6,7 +6,11 @@ It consists of various interesting engine features:
 - Fast and smooth animation with double-buffering and video coprocessor sync,
 - Direct usage of graphics blitter coprocessor for fast drawing operations,
 - Fully system, intuition environment and multitasking friendly,
-- Board engine with built-in game editor.
+- Board engine with built-in game editor,
+- IFF file support for easy modifications,
+- Audio channel allocation,
+- High compatibility across Amiga OS.
 
 The game also offers:
-- Nice graphics.
+- Nice graphics,
+- Attractive puzzles.
