@@ -11,3 +11,4 @@ I'm writing code base using system structures:
 - IFF Entry handlers to easily load IFF Files - ILBM, 8SVX and similar,
 - Blitter code to draw tiles in RastPorts,
 - Cells to implement board,
+- Copper interrupt and user Copperlist for animation.
