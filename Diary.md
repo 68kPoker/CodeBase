@@ -1,5 +1,12 @@
 # Warehouse - Diary
 
+16 February 2021
+
+Lots of good happened! Further description tommorow. Now I check-in the latest
+source code with my own Window-movement function, Copper-sync screen and 
+Tile-refresh function and IFF ILBM image loading routine. In place there
+will be Gadget-cutting function.
+
 13 February 2021
 
 OK, so what's going on - the legacy source code have been archived and is used as
