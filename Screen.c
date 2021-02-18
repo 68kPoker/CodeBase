@@ -11,6 +11,7 @@
 #include <clib/exec_protos.h>
 #include <clib/graphics_protos.h>
 #include <clib/intuition_protos.h>
+#include <clib/diskfont_protos.h>
 
 #include "Screen.h"
 
@@ -22,22 +23,32 @@ struct BitMap *allocBitMap()
     return(AllocBitMap(320, 256, 5, BMF_DISPLAYABLE|BMF_INTERLEAVED|BMF_CLEAR, NULL));
 }
 
-struct Screen *openScreen(struct BitMap *bm)
+struct Screen *openScreen(struct BitMap *bm, struct TextFont **tf)
 {
     struct Screen *s;
     struct Rectangle dclip = { 0, 0, 319, 255 };
-
-    if (s = OpenScreenTags(NULL,
-        SA_BitMap,      bm,
-        SA_DisplayID,   LORES_KEY,
-        SA_DClip,       &dclip,
-        SA_Quiet,       TRUE,
-        SA_Exclusive,   TRUE,
-        SA_ShowTitle,   FALSE,
-        SA_BackFill,    LAYERS_NOBACKFILL,
-        TAG_DONE))
+    static struct TextAttr ta =
     {
-        return(s);
+        "centurion.font", 9,
+        FS_NORMAL,
+        FPF_DISKFONT|FPF_DESIGNED
+    };
+    if (*tf = OpenDiskFont(&ta))
+    {
+        if (s = OpenScreenTags(NULL,
+            SA_BitMap,      bm,
+            SA_DisplayID,   LORES_KEY,
+            SA_Font,        &ta,
+            SA_DClip,       &dclip,
+            SA_Quiet,       TRUE,
+            SA_Exclusive,   TRUE,
+            SA_ShowTitle,   FALSE,
+            SA_BackFill,    LAYERS_NOBACKFILL,
+            TAG_DONE))
+        {
+            return(s);
+        }
+        CloseFont(*tf);
     }
     return(NULL);
 }
