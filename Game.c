@@ -36,7 +36,7 @@ void initBoard(struct Board *b)
     }
 }
 
-void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], struct BitMap *gfx)
+void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], struct BitMap *gfx, struct windowInfo *wi)
 {
     ULONG signals[] =
     {
@@ -83,25 +83,69 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
                     {
                         done = TRUE;
                     }
+                    else if (gad->GadgetID == GID_MENU2)
+                    {
+                        struct Window *menu;
+                        struct menuInfo mi;
+
+                        Request(&req, w);
+
+                        initEditorMenu(&mi, wi);
+
+                        if (menu = openMenuWindow(w, 64, 64, 80, NULL))
+                        {
+                            struct IntuiMessage *im;
+
+                            menu->WScreen->BitMap = *bm[1];
+
+                            AddGList(menu, mi.gads, -1, -1, NULL);
+                            RefreshGList(mi.gads, menu, NULL, -1);
+
+                            BltBitMap(gfx, 0, 32, bm[1], menu->LeftEdge, menu->TopEdge, 64, 16, 0xc0, 0xff, NULL);
+
+                            Move(menu->RPort, 4, 4 + menu->RPort->Font->tf_Baseline);
+                            SetAPen(menu->RPort, 4);
+                            SetDrMd(menu->RPort, JAM1);
+                            Text(menu->RPort, "Edytor", 6);
+
+                            menu->WScreen->BitMap = *bm[0];
+
+                            SetSignal(0L, 1L << cd->signal);
+                            Wait(1L << cd->signal);
+
+                            drawTile(bm[1], menu->LeftEdge, menu->TopEdge, bm[0], menu->LeftEdge, menu->TopEdge, menu->Width, menu->Height);
+
+                            WaitPort(menu->UserPort);
+
+                            while (im = (struct IntuiMessage *)GetMsg(menu->UserPort))
+                            {
+                                WORD mx = im->MouseX, my = im->MouseY;
+                                ReplyMsg((struct Message *)im);
+                            }
+
+                            CloseWindow(menu);
+                        }
+
+
+                        EndRequest(&req, w);
+                    }
                     else if (gad->GadgetID == GID_MENU3)
                     {
                         struct Window *menu;
 
                         Request(&req, w);
-                        if (menu = openMenuWindow(w, 96, 80))
+                        if (menu = openMenuWindow(w, 128, 64, 80, NULL))
                         {
                             struct IntuiMessage *im;
 
-                            BltBitMap(gfx, 0, 16, bm[1], menu->LeftEdge, menu->TopEdge, 16, 16, 0xc0, 0xff, NULL);
-                            BltBitMap(gfx, 32, 16, bm[1], menu->LeftEdge + 80, menu->TopEdge, 16, 16, 0xc0, 0xff, NULL);
-                            BltBitMap(gfx, 0, 0, bm[1], menu->LeftEdge + 16, menu->TopEdge, 64, 16, 0xc0, 0xff, NULL);
+                            BltBitMap(gfx, 0, 32, bm[1], menu->LeftEdge, menu->TopEdge, 64, 16, 0xc0, 0xff, NULL);
 
-                            BltBitMap(gfx, 0, 128, bm[1], menu->LeftEdge, menu->TopEdge + 16, 96, 64, 0xc0, 0xff, NULL);
+                            BltBitMap(gfx, 0, 128, bm[1], menu->LeftEdge, menu->TopEdge + 16, 64, 64, 0xc0, 0xff, NULL);
 
                             SetSignal(0L, 1L << cd->signal);
                             Wait(1L << cd->signal);
                             drawTile(bm[1], menu->LeftEdge, menu->TopEdge, bm[0], menu->LeftEdge, menu->TopEdge, menu->Width, menu->Height);
-                            Move(menu->RPort, 20, 4 + menu->RPort->Font->tf_Baseline);
+                            Move(menu->RPort, 4, 4 + menu->RPort->Font->tf_Baseline);
                             SetAPen(menu->RPort, 4);
                             SetDrMd(menu->RPort, JAM1);
                             Text(menu->RPort, "Kafelek", 7);
@@ -218,7 +262,7 @@ int main(void)
                                     {
                                         if (addCopperInt(&is, &cd, &s->ViewPort))
                                         {
-                                            mainLoop(w, &cd, bm, gfx);
+                                            mainLoop(w, &cd, bm, gfx, &wi);
                                             remCopperInt(&is);
                                         }
                                     }

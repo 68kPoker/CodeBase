@@ -35,17 +35,16 @@ struct Window *openBDWindow(struct Screen *s, struct windowInfo *wi)
     return(NULL);
 }
 
-struct Window *openMenuWindow(struct Window *p, WORD width, WORD height)
+struct Window *openMenuWindow(struct Window *p, WORD left, WORD width, WORD height, struct Gadget *gads)
 {
     struct Screen *s = p->WScreen;
-    WORD left = (s->Width - width) / 2;
-    WORD top = (s->Height - height) / 2;
     struct Window *w;
 
     if (w = OpenWindowTags(NULL,
         WA_CustomScreen,    s,
+        WA_Gadgets,         gads,
         WA_Left,            left,
-        WA_Top,             top,
+        WA_Top,             240 - height,
         WA_Width,           width,
         WA_Height,          height,
         WA_Borderless,      TRUE,
@@ -53,7 +52,7 @@ struct Window *openMenuWindow(struct Window *p, WORD width, WORD height)
         WA_RMBTrap,         TRUE,
         WA_BackFill,        LAYERS_NOBACKFILL,
         WA_SimpleRefresh,   TRUE,
-        WA_IDCMP,           IDCMP_MOUSEBUTTONS,
+        WA_IDCMP,           IDCMP_MOUSEBUTTONS|IDCMP_GADGETUP,
         TAG_DONE))
     {
         return(w);
@@ -164,6 +163,21 @@ void initButtons(struct Gadget gad[], struct Image img[], struct IntuiText text[
     }
 }
 
+void initMenuButtons(struct Gadget gad[], struct Image img[], struct IntuiText text[])
+{
+    WORD i;
+
+    initButton(gad + MID_SAVE, text + MID_SAVE, MID_SAVE, 0, 16, img + IMG_BUTTON, img + IMG_PRESSED);
+    initButton(gad + MID_RESTORE, text + MID_RESTORE, MID_RESTORE, 0, 32, img + IMG_BUTTON, img + IMG_PRESSED);
+    initButton(gad + MID_NEXT, text + MID_NEXT, MID_NEXT, 0, 48, img + IMG_BUTTON, img + IMG_PRESSED);
+    initButton(gad + MID_PREV, text + MID_PREV, MID_PREV, 0, 64, img + IMG_BUTTON, img + IMG_PRESSED);
+
+    for (i = 0; i < MID_COUNT - 1; i++)
+    {
+        gad[i].NextGadget = gad + i + 1;
+    }
+}
+
 void initTexts(struct IntuiText text[])
 {
     initText(text + GID_MENU1, "Magazyn");
@@ -171,6 +185,14 @@ void initTexts(struct IntuiText text[])
     initText(text + GID_MENU3, "Kafelek");
     initText(text + GID_MENU4, "Opcje");
     initText(text + GID_MENU5, "Ustawienia");
+}
+
+void initMenuTexts(struct IntuiText text[])
+{
+    initText(text + MID_SAVE, "Zapisz");
+    initText(text + MID_RESTORE, "Wczytaj");
+    initText(text + MID_NEXT, "Nastepny");
+    initText(text + MID_PREV, "Poprzedni");
 }
 
 void initWindow(struct windowInfo *wi, struct BitMap *gfx)
@@ -183,4 +205,11 @@ void initWindow(struct windowInfo *wi, struct BitMap *gfx)
 void freeWindow(struct windowInfo *wi)
 {
     freeImages(wi->img);
+}
+
+void initEditorMenu(struct menuInfo *mi, struct windowInfo *wi)
+{
+    mi->img = wi->img;
+    initMenuTexts(mi->text);
+    initMenuButtons(mi->gads, mi->img, mi->text);
 }

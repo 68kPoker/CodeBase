@@ -19,6 +19,15 @@ enum
     GID_COUNT
 };
 
+enum
+{
+    MID_SAVE,
+    MID_RESTORE,
+    MID_NEXT,
+    MID_PREV,
+    MID_COUNT
+};
+
 struct windowInfo
 {
     struct Gadget gads[GID_COUNT];
@@ -26,9 +35,18 @@ struct windowInfo
     struct Image img[IMG_COUNT];
 };
 
+struct menuInfo
+{
+    struct Gadget gads[MID_COUNT];
+    struct IntuiText text[MID_COUNT];
+    struct Image *img;
+};
+
 void initWindow(struct windowInfo *wi, struct BitMap *gfx);
 void freeWindow(struct windowInfo *wi);
 struct Window *openBDWindow(struct Screen *s, struct windowInfo *wi);
-struct Window *openMenuWindow(struct Window *p, WORD width, WORD height);
+struct Window *openMenuWindow(struct Window *p, WORD left, WORD width, WORD height, struct Gadget *gads);
+
+void initEditorMenu(struct menuInfo *mi, struct windowInfo *wi);
 
 void moveWindow(struct Window *w, WORD dx, WORD dy);
