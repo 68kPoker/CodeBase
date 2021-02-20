@@ -4,6 +4,8 @@
 #define BOARD_WIDTH  20
 #define BOARD_HEIGHT 16
 
+#define VERSION 1
+
 enum
 {
     FLOOR_KIND,
@@ -41,6 +43,12 @@ struct Cell
     WORD kind:  4;
     WORD subKind: 4;
     WORD floor: 4;
+};
+
+struct boardHeader
+{
+    ULONG version; /* Game version */
+    WORD level; /* Level number */
 };
 
 struct Board

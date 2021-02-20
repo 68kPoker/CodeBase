@@ -181,7 +181,7 @@ void initMenuButtons(struct Gadget gad[], struct Image img[], struct IntuiText t
 void initTexts(struct IntuiText text[])
 {
     initText(text + GID_MENU1, "Magazyn");
-    initText(text + GID_MENU2, "Edytor");
+    initText(text + GID_MENU2, "Edytor 001");
     initText(text + GID_MENU3, "Kafelek");
     initText(text + GID_MENU4, "Opcje");
     initText(text + GID_MENU5, "Ustawienia");

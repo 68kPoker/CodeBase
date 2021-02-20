@@ -11,12 +11,17 @@
 #include <clib/dos_protos.h>
 #include <clib/intuition_protos.h>
 #include <clib/graphics_protos.h>
+#include <clib/iffparse_protos.h>
 
 #include "Screen.h"
 #include "IFF.h"
 #include "Window.h"
 #include "Tile.h"
 #include "Game.h"
+
+#define ID_MAGA MAKE_ID('M','A','G','A')
+#define ID_NAGL MAKE_ID('N','A','G','L')
+#define ID_PLAN MAKE_ID('P','L','A','N')
 
 void initBoard(struct Board *b)
 {
@@ -36,6 +41,84 @@ void initBoard(struct Board *b)
     }
 }
 
+BOOL loadBoard(STRPTR name, struct Board *b, struct boardHeader *bh)
+{
+    struct IFFHandle *iff;
+
+    if (iff = openIFF(name, IFFF_READ))
+    {
+        if (!PropChunk(iff, ID_MAGA, ID_NAGL))
+        {
+            if (!StopChunk(iff, ID_MAGA, ID_PLAN))
+            {
+                if (!ParseIFF(iff, IFFPARSE_SCAN))
+                {
+                    struct StoredProperty *sp;
+                    if (sp = FindProp(iff, ID_MAGA, ID_NAGL))
+                    {
+                        *bh = *(struct boardHeader *)sp->sp_Data;
+                        if (ReadChunkBytes(iff, b->board, sizeof(b->board)) == sizeof(b->board))
+                        {
+                            closeIFF(iff);
+                            return(TRUE);
+                        }
+                    }
+                }
+            }
+        }
+        closeIFF(iff);
+    }
+    return(FALSE);
+}
+
+BOOL saveBoard(STRPTR name, struct Board *b, struct boardHeader *bh)
+{
+    struct IFFHandle *iff;
+
+    if (iff = openIFF(name, IFFF_WRITE))
+    {
+        if (!PushChunk(iff, ID_MAGA, ID_FORM, IFFSIZE_UNKNOWN))
+        {
+            if (!PushChunk(iff, ID_MAGA, ID_NAGL, sizeof(*bh)))
+            {
+                if (WriteChunkBytes(iff, bh, sizeof(*bh)) == sizeof(*bh))
+                {
+                    if (!PopChunk(iff))
+                    {
+                        if (!PushChunk(iff, ID_MAGA, ID_PLAN, sizeof(b->board)))
+                        {
+                            if (WriteChunkBytes(iff, b->board, sizeof(b->board)) == sizeof(b->board))
+                            {
+                                if (!PopChunk(iff))
+                                {
+                                    if (!PopChunk(iff))
+                                    {
+                                        closeIFF(iff);
+                                        return(TRUE);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        closeIFF(iff);
+    }
+    return(FALSE);
+}
+
+void printLevel(struct Window *w, struct windowInfo *wi, struct boardHeader *bh)
+{
+    ULONG lock;
+
+    lock = LockIBase(0);
+    sprintf(wi->text[GID_MENU2].IText, "Edytor %03d", bh->level);
+    UnlockIBase(lock);
+
+    RefreshGList(wi->gads + GID_MENU2, w, NULL, 1);
+}
+
 void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], struct BitMap *gfx, struct windowInfo *wi)
 {
     ULONG signals[] =
@@ -47,13 +130,20 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
     WORD tilex = 0, tiley = 1 + 8;
     struct Requester req;
     struct Board board = { 0 };
+    struct boardHeader header = { VERSION, 1 };
+
     BOOL paint = FALSE;
     WORD oldx = -1, oldy = -1;
 
     ULONG total = signals[0]|signals[1];
 
+
     InitRequester(&req);
-    initBoard(&board);
+
+    if (!loadBoard("Level001.lev", &board, &header))
+    {
+        initBoard(&board);
+    }
 
     drawBoard(&board, bm[1], gfx, 0, 0, 19, 14);
     SetSignal(0L, 1L << cd->signal);
@@ -119,8 +209,75 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
 
                             while (im = (struct IntuiMessage *)GetMsg(menu->UserPort))
                             {
+                                ULONG class = im->Class;
+                                APTR iaddr = im->IAddress;
+
                                 WORD mx = im->MouseX, my = im->MouseY;
                                 ReplyMsg((struct Message *)im);
+
+                                if (class == IDCMP_GADGETUP)
+                                {
+                                    struct Gadget *gad = (struct Gadget *)iaddr;
+                                    if (gad->GadgetID == MID_SAVE)
+                                    {
+                                        UBYTE name[16];
+                                        sprintf(name, "Level%03d.lev", header.level);
+                                        saveBoard(name, &board, &header);
+                                    }
+                                    else if (gad->GadgetID == MID_RESTORE)
+                                    {
+                                        UBYTE name[16];
+                                        sprintf(name, "Level%03d.lev", header.level);
+                                        loadBoard(name, &board, &header);
+
+                                        drawBoard(&board, bm[1], gfx, 0, 0, 19, 14);
+                                        SetSignal(0L, 1L << cd->signal);
+                                        Wait(1L << cd->signal);
+                                        drawTile(bm[1], 0, 0, bm[0], 0, 0, 320, 240);
+                                    }
+                                    else if (gad->GadgetID == MID_PREV)
+                                    {
+                                        if (header.level > 1)
+                                        {
+                                            UBYTE name[16];
+
+                                            header.level--;
+                                            printLevel(w, wi, &header);
+                                            sprintf(name, "Level%03d.lev", header.level);
+
+                                            if (!loadBoard(name, &board, &header))
+                                            {
+                                                initBoard(&board);
+                                            }
+
+                                            drawBoard(&board, bm[1], gfx, 0, 0, 19, 14);
+                                            SetSignal(0L, 1L << cd->signal);
+                                            Wait(1L << cd->signal);
+                                            drawTile(bm[1], 0, 0, bm[0], 0, 0, 320, 240);
+                                        }
+                                    }
+                                    else if (gad->GadgetID == MID_NEXT)
+                                    {
+                                        if (header.level < 10)
+                                        {
+                                            UBYTE name[16];
+
+                                            header.level++;
+                                            printLevel(w, wi, &header);
+                                            sprintf(name, "Level%03d.lev", header.level);
+
+                                            if (!loadBoard(name, &board, &header))
+                                            {
+                                                initBoard(&board);
+                                            }
+
+                                            drawBoard(&board, bm[1], gfx, 0, 0, 19, 14);
+                                            SetSignal(0L, 1L << cd->signal);
+                                            Wait(1L << cd->signal);
+                                            drawTile(bm[1], 0, 0, bm[0], 0, 0, 320, 240);
+                                        }
+                                    }
+                                }
                             }
 
                             CloseWindow(menu);
@@ -225,6 +382,8 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
             }
         }
     }
+
+    saveBoard("T:Temp.bak", &board, &header);
 }
 
 int main(void)
