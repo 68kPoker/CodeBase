@@ -5,6 +5,7 @@
 #include <intuition/screens.h>
 #include <libraries/iffparse.h>
 #include <datatypes/pictureclass.h>
+#include <datatypes/soundclass.h>
 #include <exec/memory.h>
 
 #include <clib/dos_protos.h>
@@ -64,6 +65,21 @@ BOOL scanILBM(struct IFFHandle *iff)
     return(FALSE);
 }
 
+BOOL scan8SVX(struct IFFHandle *iff)
+{
+    if (!PropChunk(iff, ID_8SVX, ID_VHDR))
+    {
+        if (!StopChunk(iff, ID_8SVX, ID_BODY))
+        {
+            if (!ParseIFF(iff, IFFPARSE_SCAN))
+            {
+                return(TRUE);
+            }
+        }
+    }
+    return(FALSE);
+}
+
 BOOL loadCMAP(struct IFFHandle *iff, struct Screen *s)
 {
     struct StoredProperty *sp;
@@ -88,7 +104,7 @@ BOOL loadCMAP(struct IFFHandle *iff, struct Screen *s)
     return(FALSE);
 }
 
-BYTE *loadBODY(struct IFFHandle *iff, LONG *size)
+BYTE *loadBODY(struct IFFHandle *iff, LONG *size, LONG flags)
 {
     struct ContextNode *cn;
 
@@ -96,7 +112,7 @@ BYTE *loadBODY(struct IFFHandle *iff, LONG *size)
     {
         BYTE *buffer;
         *size = cn->cn_Size;
-        if (buffer = AllocMem(*size, MEMF_PUBLIC))
+        if (buffer = AllocMem(*size, flags))
         {
             if (ReadChunkBytes(iff, buffer, *size) == *size)
             {
@@ -214,7 +230,7 @@ struct BitMap *loadBitMap(struct IFFHandle *iff)
         {
             BYTE *buffer;
             LONG size;
-            if (buffer = loadBODY(iff, &size))
+            if (buffer = loadBODY(iff, &size, MEMF_PUBLIC))
             {
                 result = unpackBitMap(buffer, size, bmhd, bm);
                 FreeMem(buffer, size);
@@ -227,4 +243,37 @@ struct BitMap *loadBitMap(struct IFFHandle *iff)
         }
     }
     return(NULL);
+}
+
+BOOL loadSample(STRPTR name, struct soundSample *s)
+{
+    struct IFFHandle *iff;
+    if (iff = openIFF(name, IFFF_READ))
+    {
+        if (scan8SVX(iff))
+        {
+            BYTE *buffer;
+            LONG size;
+            struct StoredProperty *sp;
+
+            if (sp = FindProp(iff, ID_8SVX, ID_VHDR))
+            {
+                s->vhdr = *(struct VoiceHeader *)sp->sp_Data;
+                if (buffer = loadBODY(iff, &size, MEMF_CHIP))
+                {
+                    s->data = buffer;
+                    s->size = size;
+                    closeIFF(iff);
+                    return(TRUE);
+                }
+            }
+        }
+        closeIFF(iff);
+    }
+    return(FALSE);
+}
+
+void freeSample(struct soundSample *s)
+{
+    FreeMem(s->data, s->size);
 }

@@ -3,9 +3,13 @@
 
 /* $Id: Game.c,v 1.1 12/.0/.1 .2:.4:.0 Robert Exp $ */
 
+#include <stdio.h>
+
+#include <dos/dos.h>
 #include <exec/interrupts.h>
 #include <libraries/iffparse.h>
 #include <graphics/rpattr.h>
+#include <exec/memory.h>
 
 #include <clib/exec_protos.h>
 #include <clib/dos_protos.h>
@@ -13,11 +17,14 @@
 #include <clib/graphics_protos.h>
 #include <clib/iffparse_protos.h>
 
-#include "Screen.h"
-#include "IFF.h"
-#include "Window.h"
+#include "debug.h"
+
+#include "Init.h"
+
 #include "Tile.h"
 #include "Game.h"
+
+#define SNDCHAN 0 /* Channel for sound effects */
 
 #define ID_MAGA MAKE_ID('M','A','G','A')
 #define ID_NAGL MAKE_ID('N','A','G','L')
@@ -119,13 +126,16 @@ void printLevel(struct Window *w, struct windowInfo *wi, struct boardHeader *bh)
     RefreshGList(wi->gads + GID_MENU2, w, NULL, 1);
 }
 
-void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], struct BitMap *gfx, struct windowInfo *wi)
+void mainLoop(struct gameInit *gi)
 {
-    ULONG signals[] =
-    {
-        1L << w->UserPort->mp_SigBit,
-        1L << cd->signal
-    };
+    struct Window *w = gi->w;
+    struct copperData *cd = &gi->copdata;
+    struct BitMap **bm = gi->bm;
+    struct BitMap *gfx = gi->gfx;
+    struct windowInfo *wi = &gi->wi;
+    struct menuInfo *mi = &gi->mi;
+
+    ULONG signals[ 2 ] = { 0 };
     BOOL done = FALSE;
     WORD tilex = 0, tiley = 1 + 8;
     struct Requester req;
@@ -135,12 +145,16 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
     BOOL paint = FALSE;
     WORD oldx = -1, oldy = -1;
 
-    ULONG total = signals[0]|signals[1];
+    ULONG total;
 
+    signals[0] = 1L << w->UserPort->mp_SigBit;
+    signals[1] = 1L << cd->signal;
+
+    total = signals[0]|signals[1];
 
     InitRequester(&req);
 
-    if (!loadBoard("Level001.lev", &board, &header))
+    if (!loadBoard("Data1/Levels/Level001.lev", &board, &header))
     {
         initBoard(&board);
     }
@@ -169,18 +183,19 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
                 if (class == IDCMP_GADGETUP)
                 {
                     struct Gadget *gad = (struct Gadget *)iaddr;
+
                     if (gad->GadgetID == GID_MENU1)
                     {
+                        playSample(gi->ioa, gi->samples + SAMPLE_BOX, SNDCHAN);
                         done = TRUE;
                     }
                     else if (gad->GadgetID == GID_MENU2)
                     {
                         struct Window *menu;
-                        struct menuInfo mi;
 
                         Request(&req, w);
 
-                        initEditorMenu(&mi, wi);
+                        playSample(gi->ioa, gi->samples + SAMPLE_BOX, SNDCHAN);
 
                         if (menu = openMenuWindow(w, 64, 64, 80, NULL))
                         {
@@ -188,8 +203,8 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
 
                             menu->WScreen->BitMap = *bm[1];
 
-                            AddGList(menu, mi.gads, -1, -1, NULL);
-                            RefreshGList(mi.gads, menu, NULL, -1);
+                            AddGList(menu, mi->gads, -1, -1, NULL);
+                            RefreshGList(mi->gads, menu, NULL, -1);
 
                             BltBitMap(gfx, 0, 32, bm[1], menu->LeftEdge, menu->TopEdge, 64, 16, 0xc0, 0xff, NULL);
 
@@ -212,7 +227,7 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
                                 ULONG class = im->Class;
                                 APTR iaddr = im->IAddress;
 
-                                WORD mx = im->MouseX, my = im->MouseY;
+                                /* WORD mx = im->MouseX, my = im->MouseY; */
                                 ReplyMsg((struct Message *)im);
 
                                 if (class == IDCMP_GADGETUP)
@@ -221,13 +236,13 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
                                     if (gad->GadgetID == MID_SAVE)
                                     {
                                         UBYTE name[16];
-                                        sprintf(name, "Level%03d.lev", header.level);
+                                        sprintf(name, "Data1/Levels/Level%03d.lev", header.level);
                                         saveBoard(name, &board, &header);
                                     }
                                     else if (gad->GadgetID == MID_RESTORE)
                                     {
                                         UBYTE name[16];
-                                        sprintf(name, "Level%03d.lev", header.level);
+                                        sprintf(name, "Data1/Levels/Level%03d.lev", header.level);
                                         loadBoard(name, &board, &header);
 
                                         drawBoard(&board, bm[1], gfx, 0, 0, 19, 14);
@@ -243,7 +258,7 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
 
                                             header.level--;
                                             printLevel(w, wi, &header);
-                                            sprintf(name, "Level%03d.lev", header.level);
+                                            sprintf(name, "Data1/Levels/Level%03d.lev", header.level);
 
                                             if (!loadBoard(name, &board, &header))
                                             {
@@ -264,7 +279,7 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
 
                                             header.level++;
                                             printLevel(w, wi, &header);
-                                            sprintf(name, "Level%03d.lev", header.level);
+                                            sprintf(name, "Data1/Levels/Level%03d.lev", header.level);
 
                                             if (!loadBoard(name, &board, &header))
                                             {
@@ -291,6 +306,8 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
                         struct Window *menu;
 
                         Request(&req, w);
+
+                        playSample(gi->ioa, gi->samples + SAMPLE_DIG, SNDCHAN);
                         if (menu = openMenuWindow(w, 128, 64, 80, NULL))
                         {
                             struct IntuiMessage *im;
@@ -353,8 +370,8 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
                     {
                         if (my < 240)
                         {
-                            BltBitMap(gfx, tilex << 4, tiley << 4, bm[0], mx & 0xfff0, my & 0xfff0, 16, 16, 0xc0, 0xff, NULL);
                             struct Cell *c = &board.board[my >> 4][mx >> 4];
+                            BltBitMap(gfx, tilex << 4, tiley << 4, bm[0], mx & 0xfff0, my & 0xfff0, 16, 16, 0xc0, 0xff, NULL);
                             c->kind = tiley - 8;
                             c->subKind = tilex;
                             paint = TRUE;
@@ -388,58 +405,16 @@ void mainLoop(struct Window *w, struct copperData *cd, struct BitMap *bm[], stru
 
 int main(void)
 {
-    struct Interrupt is;
-    struct copperData cd;
-    struct windowInfo wi;
-    struct TextFont *tf;
-    struct BitMap *bm[2];
+    struct gameInit *initData;
 
-    if (bm[0] = allocBitMap())
+    if (initData = AllocMem(sizeof(*initData), MEMF_PUBLIC|MEMF_CLEAR))
     {
-        if (bm[1] = allocBitMap())
+        if (initGame(initData))
         {
-            struct Screen *s;
-
-            if (s = openScreen(bm[0], &tf))
-            {
-                struct IFFHandle *iff;
-                if (iff = openIFF("Data/Graphics.iff", IFFF_READ))
-                {
-                    if (scanILBM(iff))
-                    {
-                        if (loadCMAP(iff, s))
-                        {
-                            struct BitMap *gfx;
-                            if (gfx = loadBitMap(iff))
-                            {
-                                struct Window *w;
-                                initWindow(&wi, gfx);
-
-                                if (w = openBDWindow(s, &wi))
-                                {
-                                    if (addCopperList(&s->ViewPort))
-                                    {
-                                        if (addCopperInt(&is, &cd, &s->ViewPort))
-                                        {
-                                            mainLoop(w, &cd, bm, gfx, &wi);
-                                            remCopperInt(&is);
-                                        }
-                                    }
-                                    CloseWindow(w);
-                                }
-                                freeWindow(&wi);
-                                FreeBitMap(gfx);
-                            }
-                        }
-                    }
-                    closeIFF(iff);
-                }
-                CloseScreen(s);
-                CloseFont(tf);
-            }
-            FreeBitMap(bm[1]);
+            mainLoop(initData);
+            freeGame(initData);
         }
-        FreeBitMap(bm[0]);
+        FreeMem(initData, sizeof(*initData));
     }
-    return(0);
+    return(RETURN_OK);
 }

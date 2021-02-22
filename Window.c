@@ -100,10 +100,17 @@ void moveWindow(struct Window *w, WORD dx, WORD dy)
     UnlockIBase(lock);
 }
 
-void initImages(struct Image img[], struct BitMap *gfx)
+BOOL initImages(struct Image img[], struct BitMap *gfx)
 {
-    cutImage(img + IMG_BUTTON, gfx, 0, 0, 64, 16);
-    cutImage(img + IMG_PRESSED, gfx, 80, 0, 64, 16);
+    if (cutImage(img + IMG_BUTTON, gfx, 0, 0, 64, 16))
+    {
+        if (cutImage(img + IMG_PRESSED, gfx, 80, 0, 64, 16))
+        {
+            return(TRUE);
+        }
+        freeImage(img + IMG_BUTTON);
+    }
+    return(FALSE);
 }
 
 void freeImages(struct Image img[])
@@ -195,11 +202,15 @@ void initMenuTexts(struct IntuiText text[])
     initText(text + MID_PREV, "Poprzedni");
 }
 
-void initWindow(struct windowInfo *wi, struct BitMap *gfx)
+BOOL initWindow(struct windowInfo *wi, struct BitMap *gfx)
 {
-    initImages(wi->img, gfx);
-    initTexts(wi->text);
-    initButtons(wi->gads, wi->img, wi->text);
+    if (initImages(wi->img, gfx))
+    {
+        initTexts(wi->text);
+        initButtons(wi->gads, wi->img, wi->text);
+        return(TRUE);
+    }
+    return(FALSE);
 }
 
 void freeWindow(struct windowInfo *wi)
