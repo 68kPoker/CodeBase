@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "Init.h"
+#include "Tile.h"
 
 #include <clib/intuition_protos.h>
 #include <clib/graphics_protos.h>
@@ -100,7 +101,15 @@ BOOL initGameSfx(struct gameInit *gi)
         {
             if (loadSample("Data1/Sfx/Box.iff", gi->samples + SAMPLE_BOX))
             {
-                return(TRUE);
+                if (loadSample("Data1/Sfx/Coins.iff", gi->samples + SAMPLE_KEY))
+                {
+                    if (loadSample("Data1/Sfx/Chew.iff", gi->samples + SAMPLE_FRUIT))
+                    {
+                        return(TRUE);
+                    }
+                    freeSample(gi->samples + SAMPLE_KEY);
+                }
+                freeSample(gi->samples + SAMPLE_BOX);
             }
             freeSample(gi->samples + SAMPLE_DIG);
         }
@@ -111,6 +120,8 @@ BOOL initGameSfx(struct gameInit *gi)
 
 void freeGameSfx(struct gameInit *gi)
 {
+    freeSample(gi->samples + SAMPLE_FRUIT);
+    freeSample(gi->samples + SAMPLE_KEY);
     freeSample(gi->samples + SAMPLE_BOX);
     freeSample(gi->samples + SAMPLE_DIG);
     freeChannels(gi->ioa);
@@ -121,8 +132,6 @@ BOOL initGameWindows(struct gameInit *gi)
 {
     if (initWindow(&gi->wi, gi->gfx))
     {
-        initEditorMenu(&gi->mi, &gi->wi);
-
         if (gi->w = openBDWindow(gi->s, &gi->wi))
         {
             return(TRUE);
@@ -136,6 +145,24 @@ void freeGameWindows(struct gameInit *gi)
 {
     CloseWindow(gi->w);
     freeWindow(&gi->wi);
+}
+
+BOOL initGameBoard(struct gameInit *gi, STRPTR name)
+{
+    BOOL result;
+    if (!(result = loadBoard(name, &gi->board, &gi->header, NULL)))
+    {
+        initBoard(&gi->board);
+    }
+
+    scanBoard(&gi->board);
+
+    drawBoard(gi->w->RPort, &gi->board, gi->bm[1], gi->gfx, 0, 0, 19, 14);
+    SetSignal(0L, 1L << gi->copdata.signal);
+    Wait(1L << gi->copdata.signal);
+    drawTile(gi->bm[1], 0, 0, gi->bm[0], 0, 0, 320, 240);
+
+    return(result);
 }
 
 BOOL initGame(struct gameInit *gi)

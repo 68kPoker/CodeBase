@@ -3,6 +3,8 @@
 
 /* $Id$ */
 
+#include <stdlib.h>
+
 #include <devices/audio.h>
 #include <clib/exec_protos.h>
 
@@ -29,6 +31,7 @@ struct IOAudio *allocChannels(void)
 
             if (!OpenDevice("audio.device", 0L, (struct IORequest *)ioa, 0))
             {
+                srand(100);
                 return(ioa);
             }
             else
@@ -46,6 +49,11 @@ void freeChannels(struct IOAudio *ioa)
 {
     struct MsgPort *mp = ioa->ioa_Request.io_Message.mn_ReplyPort;
 
+    ioa->ioa_Request.io_Command  = ADCMD_FINISH;
+    ioa->ioa_Request.io_Flags    = 0;
+    ioa->ioa_Request.io_Unit     = (APTR)1 << 0;
+    BeginIO((struct IORequest *)ioa);
+
     CloseDevice((struct IORequest *)ioa);
     DeleteIORequest((struct IORequest *)ioa);
     DeleteMsgPort(mp);
@@ -53,15 +61,20 @@ void freeChannels(struct IOAudio *ioa)
 
 void playSample(struct IOAudio *ioa, struct soundSample *s, WORD chan)
 {
+    ioa->ioa_Request.io_Command  = ADCMD_FINISH;
+    ioa->ioa_Request.io_Flags    = 0;
+    ioa->ioa_Request.io_Unit     = (APTR)1 << chan;
+    BeginIO((struct IORequest *)ioa);
+
     ioa->ioa_Request.io_Command  = CMD_WRITE;
     ioa->ioa_Request.io_Flags    = ADIOF_PERVOL;
     ioa->ioa_Data                = s->data;
     ioa->ioa_Length              = s->size;
     ioa->ioa_Period              = PAL_CLOCK / s->vhdr.vh_SamplesPerSec;
-    ioa->ioa_Volume              = 64;
+    ioa->ioa_Volume              = 25;
     ioa->ioa_Cycles              = 1;
     ioa->ioa_Request.io_Unit     = (APTR)1 << chan;
     BeginIO((struct IORequest *)ioa);
 
-    WaitIO((struct IORequest *)ioa);
+    /* WaitIO((struct IORequest *)ioa); */
 }

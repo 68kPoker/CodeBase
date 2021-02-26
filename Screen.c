@@ -1,6 +1,8 @@
 
 /* Screen.c: Display context */
 
+#include <stdio.h>
+
 #include <exec/interrupts.h>
 #include <exec/memory.h>
 #include <intuition/screens.h>
@@ -50,6 +52,10 @@ struct Screen *openScreen(struct BitMap *bm, struct TextFont **tf)
         }
         CloseFont(*tf);
     }
+    else
+    {
+        printf("Prosze zainstalowac czcionke centurion.font z katalogu Fonts.\n");
+    }
     return(NULL);
 }
 
@@ -86,7 +92,7 @@ BOOL addCopperList(struct ViewPort *vp)
     if (ucl = AllocMem(sizeof(*ucl), MEMF_PUBLIC|MEMF_CLEAR))
     {
         CINIT(ucl, 3);
-        CWAIT(ucl, 0, 0);
+        CWAIT(ucl, COPLINE, 0);
         CMOVE(ucl, custom.intreq, INTF_SETCLR|INTF_COPER);
         CEND(ucl);
 

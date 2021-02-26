@@ -26,7 +26,7 @@ struct Window *openBDWindow(struct Screen *s, struct windowInfo *wi)
         WA_RMBTrap,         TRUE,
         WA_BackFill,        LAYERS_NOBACKFILL,
         WA_SimpleRefresh,   TRUE,
-        WA_IDCMP,           IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE|IDCMP_GADGETUP|IDCMP_REFRESHWINDOW,
+        WA_IDCMP,           IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE|IDCMP_GADGETUP|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY|IDCMP_INTUITICKS,
         WA_ReportMouse,     TRUE,
         TAG_DONE))
     {
@@ -53,6 +53,30 @@ struct Window *openMenuWindow(struct Window *p, WORD left, WORD width, WORD heig
         WA_BackFill,        LAYERS_NOBACKFILL,
         WA_SimpleRefresh,   TRUE,
         WA_IDCMP,           IDCMP_MOUSEBUTTONS|IDCMP_GADGETUP,
+        TAG_DONE))
+    {
+        return(w);
+    }
+    return(NULL);
+}
+
+struct Window *openReqWindow(struct Window *p, WORD left, WORD top, WORD width, WORD height, struct Gadget *gads)
+{
+    struct Screen *s = p->WScreen;
+    struct Window *w;
+
+    if (w = OpenWindowTags(NULL,
+        WA_CustomScreen,    s,
+        WA_Left,            left,
+        WA_Top,             top,
+        WA_Width,           width,
+        WA_Height,          height,
+        WA_Borderless,      TRUE,
+        WA_Activate,        TRUE,
+        WA_RMBTrap,         TRUE,
+        WA_BackFill,        LAYERS_NOBACKFILL,
+        WA_SimpleRefresh,   TRUE,
+        WA_IDCMP,           IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_GADGETUP,
         TAG_DONE))
     {
         return(w);
@@ -106,7 +130,31 @@ BOOL initImages(struct Image img[], struct BitMap *gfx)
     {
         if (cutImage(img + IMG_PRESSED, gfx, 80, 0, 64, 16))
         {
-            return(TRUE);
+            if (cutImage(img + IMG_CLOSE, gfx, 0, 16, 16, 16))
+            {
+                if (cutImage(img + IMG_CLOSE_PRESSED, gfx, 16, 16, 16, 16))
+                {
+                    if (cutImage(img + IMG_NEXT, gfx, 64, 16, 16, 16))
+                    {
+                        if (cutImage(img + IMG_NEXT_PRESSED, gfx, 80, 16, 16, 16))
+                        {
+                            if (cutImage(img + IMG_PREV, gfx, 96, 16, 16, 16))
+                            {
+                                if (cutImage(img + IMG_PREV_PRESSED, gfx, 112, 16, 16, 16))
+                                {
+                                    return(TRUE);
+                                }
+                                freeImage(img + IMG_PREV);
+                            }
+                            freeImage(img + IMG_NEXT_PRESSED);
+                        }
+                        freeImage(img + IMG_NEXT);
+                    }
+                    freeImage(img + IMG_CLOSE_PRESSED);
+                }
+                freeImage(img + IMG_CLOSE);
+            }
+            freeImage(img + IMG_PRESSED);
         }
         freeImage(img + IMG_BUTTON);
     }
@@ -164,22 +212,23 @@ void initButtons(struct Gadget gad[], struct Image img[], struct IntuiText text[
     initButton(gad + GID_MENU4, text + GID_MENU4, GID_MENU4, 192, 240, img + IMG_BUTTON, img + IMG_PRESSED);
     initButton(gad + GID_MENU5, text + GID_MENU5, GID_MENU5, 256, 240, img + IMG_BUTTON, img + IMG_PRESSED);
 
+    gad[GID_MENU5].Activation |= GACT_TOGGLESELECT;
+
     for (i = 0; i < GID_COUNT - 1; i++)
     {
         gad[i].NextGadget = gad + i + 1;
     }
 }
 
-void initMenuButtons(struct Gadget gad[], struct Image img[], struct IntuiText text[])
+void initReqButtons(struct Gadget gad[], struct Image img[], struct IntuiText text[])
 {
     WORD i;
 
-    initButton(gad + MID_SAVE, text + MID_SAVE, MID_SAVE, 0, 16, img + IMG_BUTTON, img + IMG_PRESSED);
-    initButton(gad + MID_RESTORE, text + MID_RESTORE, MID_RESTORE, 0, 32, img + IMG_BUTTON, img + IMG_PRESSED);
-    initButton(gad + MID_NEXT, text + MID_NEXT, MID_NEXT, 0, 48, img + IMG_BUTTON, img + IMG_PRESSED);
-    initButton(gad + MID_PREV, text + MID_PREV, MID_PREV, 0, 64, img + IMG_BUTTON, img + IMG_PRESSED);
+    initButton(gad + RID_CLOSE, NULL, RID_CLOSE, 0, 0, img + IMG_CLOSE, img + IMG_CLOSE_PRESSED);
+    initButton(gad + RID_OPT1, text + RID_OPT1, RID_OPT1, 32, 112, img + IMG_BUTTON, img + IMG_PRESSED);
+    initButton(gad + RID_OPT2, text + RID_OPT2, RID_OPT2, 96, 112, img + IMG_BUTTON, img + IMG_PRESSED);
 
-    for (i = 0; i < MID_COUNT - 1; i++)
+    for (i = 0; i < RID_COUNT - 1; i++)
     {
         gad[i].NextGadget = gad + i + 1;
     }
@@ -187,19 +236,26 @@ void initMenuButtons(struct Gadget gad[], struct Image img[], struct IntuiText t
 
 void initTexts(struct IntuiText text[])
 {
-    initText(text + GID_MENU1, "Magazyn");
-    initText(text + GID_MENU2, "Edytor 001");
-    initText(text + GID_MENU3, "Kafelek");
-    initText(text + GID_MENU4, "Opcje");
-    initText(text + GID_MENU5, "Ustawienia");
+    initText(text + GID_MENU1, "Nowa gra");
+    initText(text + GID_MENU2, "Wczytaj grë");
+    initText(text + GID_MENU3, "Restartuj");
+    initText(text + GID_MENU4, "Poziom");
+    initText(text + GID_MENU5, "Opcje edycji");
 }
 
-void initMenuTexts(struct IntuiText text[])
+void initEditTexts(struct IntuiText text[])
 {
-    initText(text + MID_SAVE, "Zapisz");
-    initText(text + MID_RESTORE, "Wczytaj");
-    initText(text + MID_NEXT, "Nastepny");
-    initText(text + MID_PREV, "Poprzedni");
+    initText(text + GID_MENU1, "Kafelek");
+    initText(text + GID_MENU2, "Odtwórz");
+    initText(text + GID_MENU3, "Zapisz");
+    initText(text + GID_MENU4, "Poziom");
+    initText(text + GID_MENU5, "Opcje edycji");
+}
+
+void initReqTexts(struct IntuiText text[], STRPTR opt1, STRPTR opt2)
+{
+    initText(text + RID_OPT1, opt1);
+    initText(text + RID_OPT2, opt2);
 }
 
 BOOL initWindow(struct windowInfo *wi, struct BitMap *gfx)
@@ -218,9 +274,9 @@ void freeWindow(struct windowInfo *wi)
     freeImages(wi->img);
 }
 
-void initEditorMenu(struct menuInfo *mi, struct windowInfo *wi)
+void initReq(struct reqInfo *ri, struct windowInfo *wi, STRPTR opt1, STRPTR opt2)
 {
-    mi->img = wi->img;
-    initMenuTexts(mi->text);
-    initMenuButtons(mi->gads, mi->img, mi->text);
+    ri->img = wi->img;
+    initReqTexts(ri->text, opt1, opt2);
+    initReqButtons(ri->gads, ri->img, ri->text);
 }

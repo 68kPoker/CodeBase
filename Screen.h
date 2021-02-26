@@ -1,6 +1,8 @@
 
 #include <exec/types.h>
 
+#define COPLINE 16
+
 struct copperData
 {
     struct ViewPort *vp;

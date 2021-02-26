@@ -5,11 +5,14 @@
 #include "Window.h"
 #include "Audio.h"
 #include "IFF.h"
+#include "Game.h"
 
 enum
 {
     SAMPLE_DIG,
     SAMPLE_BOX,
+    SAMPLE_KEY,
+    SAMPLE_FRUIT,
     SAMPLES
 };
 
@@ -26,8 +29,12 @@ struct gameInit
     struct soundSample samples[SAMPLES];
 
     struct windowInfo wi;
-    struct menuInfo mi;
+    struct reqInfo ri;
     struct Window *w;
+
+    struct Board board;
+    struct boardHeader header;
+    struct gameState state;
 };
 
 BOOL openLibs(void);
@@ -35,6 +42,7 @@ BOOL initGameScreen(struct gameInit *gi);
 BOOL initGameGfx(struct gameInit *gi);
 BOOL initGameSfx(struct gameInit *gi);
 BOOL initGameWindows(struct gameInit *gi);
+BOOL initGameBoard(struct gameInit *gi, STRPTR name);
 BOOL initGame(struct gameInit *gi);
 
 void closeLibs(void);

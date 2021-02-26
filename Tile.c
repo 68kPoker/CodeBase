@@ -14,6 +14,8 @@
 
 #define WordWidth(w) (((w)+15)>>4)
 
+void drawMessage(struct gameInit *gi, struct RastPort *rp, STRPTR text, WORD x, WORD y);
+
 __far extern struct Custom custom;
 
 /* drawTile: Draw 16-pixel width aligned interleaved bitmap */
@@ -43,9 +45,35 @@ void drawTile(struct BitMap *gfx, UWORD sx, UWORD sy, struct BitMap *bm, UWORD d
     DisownBlitter();
 }
 
-void drawBoard(struct Board *board, struct BitMap *bm, struct BitMap *gfx, WORD sx, WORD sy, WORD ex, WORD ey)
+void updateStatus(struct RastPort *rp, struct Board *board)
+{
+    UBYTE text[20];
+
+    sprintf(text, "%05d", board->info.points);
+
+    SetAPen(rp, 20);
+    RectFill(rp, 41, 3, 81, 12);
+    drawMessage(NULL, rp, text, 42, 4);
+
+    sprintf(text, "%2d", board->info.keys);
+
+    SetAPen(rp, 20);
+    RectFill(rp, 121, 3, 161, 12);
+    drawMessage(NULL, rp, text, 122, 4);
+
+    sprintf(text, "%2d", board->info.placed);
+
+    SetAPen(rp, 20);
+    RectFill(rp, 201, 3, 241, 12);
+    drawMessage(NULL, rp, text, 202, 4);
+}
+
+void drawBoard(struct RastPort *rp, struct Board *board, struct BitMap *bm, struct BitMap *gfx, WORD sx, WORD sy, WORD ex, WORD ey)
 {
     WORD x, y;
+    UBYTE text[20];
+
+    struct RastPort auxrp;
 
     for (y = sy; y <= ey; y++)
     {
@@ -59,6 +87,18 @@ void drawBoard(struct Board *board, struct BitMap *bm, struct BitMap *gfx, WORD 
             BltBitMap(gfx, srcx << 4, srcy << 4, bm, x << 4, y << 4, 16, 16, 0xc0, 0xff, NULL);
         }
     }
+    BltBitMap(gfx, 0, 96, bm, 0, 0, 320, 16, 0xc0, 0xff, NULL);
+
+    sprintf(text, "Poziom: %d", board->info.level);
+
+    InitRastPort(&auxrp);
+    auxrp.BitMap = bm;
+    auxrp.Layer = rp->Layer;
+    SetFont(&auxrp, rp->Font);
+
+    drawMessage(NULL, &auxrp, text, 258, 4);
+
+    updateStatus(&auxrp, board);
 }
 
 /* Cut Image from BitMap */
