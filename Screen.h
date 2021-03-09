@@ -1,17 +1,50 @@
 
+/* $Id$ */
+
+#ifndef SCREEN_H
+#define SCREEN_H
+
+/* Includes */
+
 #include <exec/types.h>
+#include <exec/interrupts.h>
+#include <utility/tagitem.h>
 
-#define COPLINE 16
+/* Defines */
 
-struct copperData
+#define DEPTH 5
+
+/* Structures */
+
+struct copperInfo
 {
-    struct ViewPort *vp;
-    WORD signal;
-    struct Task *task;
+    struct ViewPort *viewPort;  /* Our ViewPort */
+    WORD            dispSignal; /* Signal on display */
+    struct Task     *sigTask;   /* This task */
 };
 
-struct BitMap *allocBitMap(void);
-struct Screen *openScreen(struct BitMap *bm, struct TextFont **tf);
-BOOL addCopperInt(struct Interrupt *is, struct copperData *cd, struct ViewPort *vp);
-void remCopperInt(struct Interrupt *is);
-BOOL addCopperList(struct ViewPort *vp);
+struct screenInfo
+{
+    struct Screen       *screen;    /* Backward link */
+    struct ScreenBuffer *buffers[2];
+    struct MsgPort      *safePort;
+    BOOL                safeToDraw; /* Is it safe to draw into buffer? */
+    UWORD               frame;      /* Current buffer */
+    struct Interrupt    dispInt;    /* Display interrupt */
+    struct copperInfo   copInfo;
+};
+
+/* External symbols */
+
+/* Prototypes */
+
+/* Obtain standard screen tags */
+
+extern struct TagItem *getScreenTags(void);
+
+/* Open screen with optional custom tags */
+
+extern struct screenInfo *openScreen(struct TagItem *base, ULONG tag1, ...);
+extern void closeScreen(struct screenInfo *s);
+
+#endif /* SCREEN_H */

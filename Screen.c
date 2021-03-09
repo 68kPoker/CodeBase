@@ -1,107 +1,142 @@
 
-/* Screen.c: Display context */
+/* $Id$ */
 
-#include <stdio.h>
-
-#include <exec/interrupts.h>
-#include <exec/memory.h>
-#include <intuition/screens.h>
-#include <hardware/intbits.h>
-#include <hardware/custom.h>
-#include <graphics/gfxmacros.h>
-
-#include <clib/exec_protos.h>
-#include <clib/graphics_protos.h>
-#include <clib/intuition_protos.h>
-#include <clib/diskfont_protos.h>
+/* Screen functions. */
 
 #include "Screen.h"
 
-extern void myCopper(void);
-__far extern struct Custom custom;
+#include <intuition/screens.h>
+#include <hardware/custom.h>
+#include <hardware/intbits.h>
+#include <graphics/gfxmacros.h>
+#include <exec/memory.h>
 
-struct BitMap *allocBitMap()
+#include <clib/intuition_protos.h>
+#include <clib/graphics_protos.h>
+#include <clib/exec_protos.h>
+#include <clib/utility_protos.h>
+
+__far extern struct Custom custom;
+extern void myCopper(void);
+
+/*
+ * getScreenTags: Obtain standard TagItem list for the openScreen.
+ */
+
+struct TagItem *getScreenTags(void)
 {
-    return(AllocBitMap(320, 256, 5, BMF_DISPLAYABLE|BMF_INTERLEAVED|BMF_CLEAR, NULL));
+    static struct TagItem tags[] =
+    {
+        { SA_DClip,     0           },
+        { SA_DisplayID, LORES_KEY   },
+        { SA_Depth,     DEPTH       },
+        { SA_Quiet,     TRUE        },
+        { SA_Exclusive, TRUE        },
+        { SA_ShowTitle, FALSE       },
+        { SA_BackFill,  (ULONG) LAYERS_NOBACKFILL },
+        { SA_Title,     0           },
+        { TAG_DONE }
+    };
+    static struct Rectangle rect =
+        { 0, 0, 319, 255 };
+
+    tags[0].ti_Data = (ULONG) &rect;
+    tags[7].ti_Data = (ULONG) "Magazyn";
+
+    return(tags);
 }
 
-struct Screen *openScreen(struct BitMap *bm, struct TextFont **tf)
+/*
+ * openScreen: Open double-buffered screen.
+ */
+
+struct screenInfo *openScreen(struct TagItem *base, ULONG tag1, ...)
 {
-    struct Screen *s;
-    struct Rectangle dclip = { 0, 0, 319, 255 };
-    static struct TextAttr ta =
+    struct screenInfo *si;
+
+    if (si = AllocMem(sizeof(*si), MEMF_PUBLIC|MEMF_CLEAR))
     {
-        "centurion.font", 9,
-        FS_NORMAL,
-        FPF_DISKFONT|FPF_DESIGNED
-    };
-    if (*tf = OpenDiskFont(&ta))
-    {
-        if (s = OpenScreenTags(NULL,
-            SA_BitMap,      bm,
-            SA_DisplayID,   LORES_KEY,
-            SA_Font,        &ta,
-            SA_DClip,       &dclip,
-            SA_Quiet,       TRUE,
-            SA_Exclusive,   TRUE,
-            SA_ShowTitle,   FALSE,
-            SA_BackFill,    LAYERS_NOBACKFILL,
-            TAG_DONE))
+        ApplyTagChanges(base, (struct TagItem *) &tag1);
+
+        if (si->screen = OpenScreenTagList(NULL, base))
         {
-            return(s);
+            if (si->buffers[0] = AllocScreenBuffer(si->screen, NULL, SB_SCREEN_BITMAP))
+            {
+                if (si->buffers[1] = AllocScreenBuffer(si->screen, NULL, SB_COPY_BITMAP))
+                {
+                    if (si->safePort = CreateMsgPort())
+                    {
+                        si->safeToDraw = TRUE;
+                        si->frame = 1;
+                        si->buffers[0]->sb_DBufInfo->dbi_SafeMessage.mn_ReplyPort = si->safePort;
+                        si->buffers[1]->sb_DBufInfo->dbi_SafeMessage.mn_ReplyPort = si->safePort;
+
+                        if ((si->copInfo.dispSignal = AllocSignal(-1)) != -1)
+                        {
+                            struct UCopList *ucl;
+
+                            si->copInfo.sigTask = FindTask(NULL);
+                            si->copInfo.viewPort = &si->screen->ViewPort;
+
+                            si->dispInt.is_Code = myCopper;
+                            si->dispInt.is_Data = (APTR)&si->copInfo;
+                            si->dispInt.is_Node.ln_Pri = 0;
+
+                            if (ucl = AllocMem(sizeof(*ucl), MEMF_PUBLIC|MEMF_CLEAR))
+                            {
+                                CINIT(ucl, 3); /* Copper-list length */
+                                CWAIT(ucl, 0, 0);
+                                CMOVE(ucl, custom.intreq, INTF_SETCLR|INTF_COPER);
+                                CEND(ucl);
+
+                                Forbid();
+                                si->screen->ViewPort.UCopIns = ucl;
+                                Permit();
+
+                                RethinkDisplay();
+
+                                AddIntServer(INTB_COPER, &si->dispInt);
+
+                                si->screen->UserData = (APTR)si;
+
+                                return(si);
+                            }
+                            FreeSignal(si->copInfo.dispSignal);
+                        }
+                        DeleteMsgPort(si->safePort);
+                    }
+                    FreeScreenBuffer(si->screen, si->buffers[1]);
+                }
+                FreeScreenBuffer(si->screen, si->buffers[0]);
+            }
+            CloseScreen(si->screen);
         }
-        CloseFont(*tf);
-    }
-    else
-    {
-        printf("Prosze zainstalowac czcionke centurion.font z katalogu Fonts.\n");
+        FreeMem(si, sizeof(*si));
     }
     return(NULL);
 }
 
-BOOL addCopperInt(struct Interrupt *is, struct copperData *cd, struct ViewPort *vp)
-{
-    is->is_Code = myCopper;
-    is->is_Data = cd;
-    is->is_Node.ln_Pri = 0;
-    is->is_Node.ln_Name = "GearWorks";
+/*
+ * closeScreen: Close double-buffered screen.
+ */
 
-    if ((cd->signal = AllocSignal(-1)) != -1)
+void closeScreen(struct screenInfo *si)
+{
+    RemIntServer(INTB_COPER, &si->dispInt);
+    FreeSignal(si->copInfo.dispSignal);
+
+    if (!(si->safeToDraw))
     {
-        cd->vp = vp;
-        cd->task = FindTask(NULL);
-        AddIntServer(INTB_COPER, is);
-        return(TRUE);
+        while (!(GetMsg(si->safePort)))
+        {
+            WaitPort(si->safePort);
+        }
     }
-    return(FALSE);
+    DeleteMsgPort(si->safePort);
+    FreeScreenBuffer(si->screen, si->buffers[1]);
+    FreeScreenBuffer(si->screen, si->buffers[0]);
+    CloseScreen(si->screen);
+    FreeMem(si, sizeof(*si));
 }
 
-void remCopperInt(struct Interrupt *is)
-{
-    struct copperData *cd = (struct copperData *)is->is_Data;
-
-    RemIntServer(INTB_COPER, is);
-
-    FreeSignal(cd->signal);
-}
-
-BOOL addCopperList(struct ViewPort *vp)
-{
-    struct UCopList *ucl;
-
-    if (ucl = AllocMem(sizeof(*ucl), MEMF_PUBLIC|MEMF_CLEAR))
-    {
-        CINIT(ucl, 3);
-        CWAIT(ucl, COPLINE, 0);
-        CMOVE(ucl, custom.intreq, INTF_SETCLR|INTF_COPER);
-        CEND(ucl);
-
-        Forbid();
-        vp->UCopIns = ucl;
-        Permit();
-
-        RethinkDisplay();
-        return(TRUE);
-    }
-    return(FALSE);
-}
+/** EOF **/
