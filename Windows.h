@@ -1,12 +1,20 @@
 
-#include <exec/lists.h>
+#ifndef WINDOWS_H
+#define WINDOWS_H
 
-struct windowInfo
+#include <exec/types.h>
+
+#define ESC_KEY 0x45
+
+enum
 {
-    struct Window *window;
-    struct MinList gadList;
-};
+	SIGBIT_USERPORT,
+	SIGBIT_COPPER,
+	SIGBIT_SAFE,
+	SIGBITS
+};	
 
-extern struct TagItem *getWindowTags(struct Screen *s);
-extern struct windowInfo *openWindow(struct TagItem *base, ULONG tag1, ...);
-extern void closeWindow(struct windowInfo *wi);
+struct Window *openWindow(struct Screen *s);
+LONG mainLoop(struct Window *w, struct screenInfo *si);
+
+#endif /* WINDOWS_H */

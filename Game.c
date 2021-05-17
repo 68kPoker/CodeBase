@@ -22,7 +22,7 @@ struct Cell *heroCell = &board.cells[ 1 ][ 1 ]; /* Pointer to hero's cell */
 WORD placedBoxes = 0;
 
 /*
-** Reset board.
+** newGame resets board.
 */
 VOID newGame( VOID )
 {
@@ -86,20 +86,6 @@ BOOL canPush( WORD dirX, WORD dirY )
 	switch( pastTarget->object.type )
 	{
 		case NO_OBJECT:
-			switch( target->floor.type )
-			{
-				case FLAGSTONE_FLOOR:
-					placedBoxes--;
-					break;
-			}		
-			
-			switch( pastTarget->floor.type )
-			{
-				case FLAGSTONE_FLOOR:
-					placedBoxes++;
-					break;
-			}			
-			
 			return( TRUE );
 			
 		default:
@@ -112,6 +98,9 @@ BOOL canPush( WORD dirX, WORD dirY )
 */
 static void moveHero( WORD dirX, WORD dirY )
 {
+	Cell *target = heroCell + ( dirY * boardWidth ) + dirX;
+
+	moveObject( target, dirX, dirY); /* Optional pushing */
 	moveObject( heroCell, dirX, dirY );
 	clearObject( heroCell );
 }
@@ -123,7 +112,24 @@ static void moveObject( Cell *cell, WORD dirX, WORD dirY )
 {
 	Cell *target = cell + ( dirY * boardWidth ) + dirX;
 	
-	target->object = cell->object;
+	if( cell->object.type != NO_OBJECT )
+	{
+		target->object = cell->object;
+		
+		switch( cell->floor.type )
+		{
+			case FLAGSTONE_FLOOR:
+				placedBoxes--;
+				break;
+		}		
+			
+		switch( target->floor.type )
+		{
+			case FLAGSTONE_FLOOR:
+				placedBoxes++;
+				break;
+		}								
+	}	
 }
 
 /*
