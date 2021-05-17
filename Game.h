@@ -7,88 +7,61 @@
 #define BOARD_WIDTH  20
 #define BOARD_HEIGHT 16
 
-#define VERSION 2
+/*
+** Cell object types 
+*/
 
 enum
 {
-    RESULT_COMPLETED,
-    RESULT_EDIT,
-    RESULT_PLAY,
-    RESULT_DONE,
-    RESULT_QUIT,
-    RESULT_RESTART,
-    RESULT_START,
-    RESULT_LOAD
-};
+	NO_OBJECT,
+	WALL_OBJECT,
+	BOX_OBJECT
+};	
 
 enum
 {
-    STATE_LOADED,
-    LEVEL_LOADED,
-    LOAD_FAILURE
-};
+	NORMAL_FLOOR,
+	FLAGSTONE_FLOOR
+};	
 
-enum
+/*
+** Variable types
+*/
+
+typedef struct cellObject
 {
-    FLOOR_KIND,
-    WALL_KIND,
-    OBJECT_KIND,
-    ITEM_KIND
-};
+	BYTE type;
+	BYTE id;
+} cellObject;	
 
-enum
+typedef struct Cell
 {
-    NORMAL_FLOOR,
-    FLAGSTONE_FLOOR
-};
+	cellObject floor, object;
+} Cell;
 
-enum
+typedef struct Board
 {
-    NORMAL_WALL,
-    DOOR_WALL
-};
+	Cell cells[ BOARD_HEIGHT ][ BOARD_WIDTH ];
+} Board;
 
-enum
-{
-    BOX_OBJECT,
-    HERO_OBJECT,
-    PLACED_OBJECT
-};
+/*
+** Prototypes
+*/
 
-enum
-{
-    FRUIT_ITEM,
-    KEY_ITEM
-};
+VOID newGame( VOID );
+BOOL canMove( WORD dirX, WORD dirY );
+BOOL canPush( WORD dirX, WORD dirY );
+BOOL moveCheckHero( WORD dirX, WORD dirY );
 
-struct Cell
-{
-    WORD kind:  4;
-    WORD subKind: 4;
-    WORD floor: 4;
-};
+const WORD boardWidth = BOARD_WIDTH, boardHeight = BOARD_HEIGHT;
 
-struct Board
-{
-    struct Cell board[BOARD_HEIGHT][BOARD_WIDTH];
-    struct boardInfo
-    {
-        WORD heroX, heroY;
-        WORD boxes, placed, keys;
-        WORD level, points;
-    } info;
-};
+extern Board board;
 
+/*
+** Global variables
+*/
 
-struct boardHeader
-{
-    ULONG version; /* Game version */
-};
+extern struct Cell *heroCell; /* Pointer to hero's cell */
+extern WORD placedBoxes;
 
-struct gameState
-{
-    struct boardHeader header;
-    struct boardInfo info;
-};
-
-#endif
+#endif /* GAME_H */
