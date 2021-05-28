@@ -1,0 +1,220 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+1.1
+date     121.03.15.21.44.34;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Intuition screen management.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+/* $Header$ */
+
+/*===============================================*/
+
+#include <stdio.h>
+
+#include <graphics/gfx.h>
+#include <graphics/text.h>
+#include <exec/memory.h>
+#include <intuition/screens.h>
+#include <hardware/custom.h>
+#include <exec/interrupts.h>
+#include <hardware/intbits.h>
+#include <graphics/gfxmacros.h>
+
+#include <clib/graphics_protos.h>
+#include <clib/diskfont_protos.h>
+#include <clib/exec_protos.h>
+#include <clib/intuition_protos.h>
+
+#include "Screen.h"
+
+__far extern struct Custom custom;
+
+/*===============================================*/
+
+BOOL initBitMaps(struct BitMap *bitmaps[], UWORD rasWidth, UWORD rasHeight, UBYTE rasDepth)
+{
+    printf("> Allocating %d·%d·%d BitMaps.\n", rasWidth, rasHeight, rasDepth);
+    if (bitmaps[0] = AllocBitMap(
+        rasWidth,
+        rasHeight,
+        rasDepth,
+        BMF_DISPLAYABLE | BMF_INTERLEAVED,
+        NULL))
+    {
+        if (bitmaps[1] = AllocBitMap(
+            rasWidth,
+            rasHeight,
+            rasDepth,
+            BMF_DISPLAYABLE | BMF_INTERLEAVED,
+            NULL))
+        {
+            return(TRUE);
+        }
+        FreeBitMap(bitmaps[0]);
+    }
+    printf("# Out of graphics memory!\n");
+    return(FALSE);
+}
+
+VOID freeBitMaps(struct BitMap *bitmaps[])
+{
+    printf("< Freeing bitmaps.\n");
+    FreeBitMap(bitmaps[1]);
+    FreeBitMap(bitmaps[0]);
+}
+
+/*===============================================*/
+
+BOOL initFont(struct TextFont **font, struct TextAttr *ta)
+{
+    printf("> Opening %s size %d.\n", ta->ta_Name, ta->ta_YSize);
+    if (*font = OpenDiskFont(ta))
+    {
+        return(TRUE);
+    }
+    printf("# Couldn't open %s size %d!\n", ta->ta_Name, ta->ta_YSize);
+    return(FALSE);
+}
+
+VOID closeFont(struct TextFont *font)
+{
+    printf("< Closing font.\n");
+    CloseFont(font);
+}
+
+/*===============================================*/
+
+ULONG *initPal(UBYTE depth)
+{
+    ULONG colors = 1L << depth;
+    ULONG *pal;
+
+    printf("> Allocating palette.\n");
+    if (pal = AllocVec(((colors * 3) + 2) * sizeof(ULONG), MEMF_PUBLIC | MEMF_CLEAR))
+    {
+        pal[0] = colors << 16;
+
+        return(pal);
+    }
+    printf("# Out of memory!\n");
+    return(NULL);
+}
+
+VOID freePal(ULONG *pal)
+{
+    printf("< Freeing palette.\n");
+    FreeVec(pal);
+}
+
+/*===============================================*/
+
+struct Screen *openScreen(STRPTR title, struct BitMap *bitmaps[], struct TextAttr *ta, ULONG *pal)
+{
+    ULONG modeID = LORES_KEY;
+    struct Rectangle clip = { 0, 0, 319, 255 };
+    struct Screen *s;
+
+    printf("> Opening screen.\n");
+    if (s = OpenScreenTags(NULL,
+        SA_DClip,       &clip,
+        SA_DisplayID,   modeID,
+        SA_Title,       title,
+        SA_BitMap,      bitmaps[0],
+        SA_Font,        ta,
+        SA_Colors32,    pal,
+        SA_Quiet,       TRUE,
+        SA_Exclusive,   TRUE,
+        SA_ShowTitle,   FALSE,
+        SA_BackFill,    LAYERS_NOBACKFILL,
+        TAG_DONE))
+    {
+        return(s);
+    }
+    printf("# Couldn't open screen!\n");
+    return(NULL);
+}
+
+VOID closeScreen(struct Screen *s)
+{
+    printf("< Closing screen.\n");
+    CloseScreen(s);
+}
+
+/*===============================================*/
+
+BOOL addUCopList(struct ViewPort *vp)
+{
+    struct UCopList *ucl;
+
+    printf("> Setting up copperlist.\n");
+    if (ucl = AllocMem(sizeof(*ucl), MEMF_PUBLIC | MEMF_CLEAR))
+    {
+        CINIT(ucl, COMMANDS);
+        CWAIT(ucl, 0, 0);
+        CMOVE(ucl, custom.intreq, INTF_SETCLR | INTF_COPER);
+        CEND(ucl);
+
+        Forbid();
+        vp->UCopIns = ucl;
+        Permit();
+
+        RethinkDisplay();
+
+        return(TRUE);
+    }
+    printf("# Out of memory!\n");
+    return(FALSE);
+}
+
+/*===============================================*/
+
+BOOL addCopperIs(void (*copperIs)(void), struct Interrupt *is, struct copperData *cd, struct ViewPort *vp)
+{
+    printf("> Setting up copper interrupt.\n");
+    if ((cd->signal = AllocSignal(-1)) != -1)
+    {
+        cd->task = FindTask(NULL);
+        cd->vp   = vp;
+
+        is->is_Code = copperIs;
+        is->is_Data = (APTR)cd;
+        is->is_Node.ln_Pri = PRI;
+
+        AddIntServer(INTB_COPER, is);
+
+        return(TRUE);
+    }
+    printf("# Out of signals!\n");
+    return(FALSE);
+}
+
+VOID remCopperIs(struct Interrupt *is)
+{
+    printf("< Removing copper interrupt.\n");
+    RemIntServer(INTB_COPER, is);
+
+    FreeSignal(((struct copperData *)is->is_Data)->signal);
+}
+
+/*===============================================*/
+
+/* EOF */
+@

@@ -1,0 +1,58 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+1.1
+date     121.03.15.21.45.07;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Screen management header.
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+/* $Header$ */
+
+#ifndef SCREEN_H
+#define SCREEN_H
+
+#include <exec/types.h>
+
+#define COMMANDS 3
+#define PRI      0
+
+struct copperData
+{
+    struct ViewPort *vp;
+    WORD            signal;
+    struct Task     *task;
+} copperData;
+
+BOOL initBitMaps(struct BitMap *bitmaps[], UWORD rasWidth, UWORD rasHeight, UBYTE rasDepth);
+BOOL initFont(struct TextFont **font, struct TextAttr *ta);
+ULONG *initPal(UBYTE depth);
+struct Screen *openScreen(STRPTR title, struct BitMap *bitmaps[], struct TextAttr *ta, ULONG *pal);
+BOOL addUCopList(struct ViewPort *vp);
+BOOL addCopperIs(void (*copperIs)(void), struct Interrupt *is, struct copperData *cd, struct ViewPort *vp);
+
+VOID remCopperIs(struct Interrupt *is);
+VOID closeScreen(struct Screen *s);
+VOID freePal(ULONG *pal);
+VOID closeFont(struct TextFont *font);
+VOID freeBitMaps(struct BitMap *bitmaps[]);
+
+#endif /* SCREEN_H */
+@

@@ -1,0 +1,25 @@
+
+# Magazyn
+
+dir = /iff/modules
+
+iff = $(dir)/loadilbm.o $(dir)/parse.o $(dir)/ilbmr.o $(dir)/unpacker.o \
+      $(dir)/getbitmap.o $(dir)/iffpstrings.o
+      
+src = Game.c Screen.c
+
+obj = $(src:*.c:%1.o)
+
+head = Screen.h
+
+exe = Game
+
+copts = -I/iff
+
+$(exe):	$(obj)
+	dcc %(right) $(iff) Copper.o -o %(left)
+
+$(obj):	$(src)
+	dcc %(right) $(copts) -c -o %(left)
+
+$(obj):: $(head)

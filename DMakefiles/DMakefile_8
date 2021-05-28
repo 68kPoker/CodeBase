@@ -1,0 +1,16 @@
+
+
+# Magazyn
+
+M = /IFF/modules/
+SRC = Screen.c
+OBJ = $(SRC:*.c:Obj/%1.o)
+MOD = $(M)parse.o $(M)iffpstrings.o $(M)Hook.o $(M)ilbmr.o $(M)unpacker.o \
+      $(M)loadilbm.o $(M)getbitmap.o
+EXE = Magazyn
+
+$(EXE): $(OBJ) $(MOD)
+	dcc %(right) -o %(left)
+
+$(OBJ): $(SRC)
+	dcc %(right) -c -o %(left) -I/IFF/

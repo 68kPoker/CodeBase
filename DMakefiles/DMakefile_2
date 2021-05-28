@@ -1,0 +1,20 @@
+
+# Magazyn
+
+dir = //iff/modules
+
+iff = $(dir)/loadilbm.o $(dir)/parse.o $(dir)/ilbmr.o $(dir)/unpacker.o \
+      $(dir)/getbitmap.o $(dir)/iffpstrings.o
+
+Magazyn: Magazyn.o Gadgets.o Blit.o
+	dcc Magazyn.o Gadgets.o Blit.o $(iff) -o Magazyn
+
+Magazyn.o: Magazyn.c
+	dcc Magazyn.c -c -I//iff
+
+Gadgets.o: Gadgets.c
+	dcc Gadgets.c -c
+
+Blit.o: Blit.c
+	dcc Blit.c -c
+

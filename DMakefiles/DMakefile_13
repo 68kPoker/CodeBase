@@ -1,0 +1,17 @@
+
+src = Screen.c Game.c IFF.c 
+obj = $(src:*.c:%1.o)
+exe = Screen
+
+$(exe):	$(obj) Copper.o
+	dcc %(right) -o %(left)
+
+$(obj): $(src)
+	dcc %(right) -c -o %(left)
+
+Screen.o: Screen.h Game.h IFF.h
+
+IFF.o: IFF.h	
+
+Game.o: Game.h Screen.h
+

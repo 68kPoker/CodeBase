@@ -1,0 +1,6 @@
+Main:
+ cppc Main.o Screen.o -l MCPP:Libs/amiga.lib
+Main.o: Main.c
+ cc Main.c
+Screen.o: Screen.c
+ cc Screen.c

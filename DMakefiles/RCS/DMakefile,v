@@ -1,0 +1,51 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @# @;
+
+
+1.1
+date     121.03.03.14.21.25;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Warehouse make file.
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+src = Init.c Game.c Audio.c IFF.c Screen.c Tile.c Window.c
+obj = $(src:*.c:%1.o)
+exe = Game
+
+$(exe):	$(obj) Copper.o
+	dcc %(right) -o %(left)
+
+$(obj):	$(src)
+	dcc %(right) -c -o %(left)
+
+Init.o:	Audio.h Game.h IFF.h Init.h Screen.h Tile.h Window.h
+
+Game.o: Game.h
+
+Audio.o: Audio.h
+
+IFF.o: IFF.h
+
+Screen.o: Screen.h
+
+Window.o: Window.h
+
+$(obj): debug.h
+
+@

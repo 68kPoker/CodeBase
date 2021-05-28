@@ -1,0 +1,297 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+1.1
+date     121.03.02.16.43.21;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Game logic.
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+/* Draw various elements */
+
+/* $Log$ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <exec/types.h>
+
+#define BOARD_WIDTH  20
+#define BOARD_HEIGHT 16
+
+/* States */
+enum
+{
+    NONE,
+    WALL,
+    BOX,
+    HERO
+};
+
+/* Floors */
+enum
+{
+    FLOOR,
+    FLAGSTONE,
+    MUD,
+    FILLED_MUD
+};
+
+/* Transparencies */
+enum
+{
+    TRANSPARENT,
+    SOLID
+};
+
+struct cell
+{
+    UWORD *state; /* This cell's state */
+    UWORD *floor; /* This cell's floor */
+    UWORD x, y; /* This cell's position */
+};
+
+struct board
+{
+    UWORD states[ BOARD_HEIGHT ][ BOARD_WIDTH ];
+    UWORD floors[ BOARD_HEIGHT ][ BOARD_WIDTH ];
+    WORD x, y; /* Hero position */
+    struct BitMap *gfx;
+};
+
+struct draw_context
+{
+    struct RastPort *rp;
+};
+
+void draw_board( struct board *board, struct draw_context *target );
+void for_each_cell( struct board *board, void( *command )( struct board *board, struct cell *c, APTR ), APTR );
+
+WORD transparency( WORD state )
+{
+    if( state == WALL )
+        return( SOLID );
+
+    return( TRANSPARENT );
+}
+
+void draw_tile( struct RastPort *rp, struct BitMap *tilegfx, WORD state, WORD floor, WORD x, WORD y )
+{
+    if( state == NONE )
+        /* No object, draw floor only */
+        putchar( '·' + floor );
+    else if( transparency( state ) == SOLID )
+        /* No floor, draw object only */
+        putchar( '"' + state );
+    else
+        /* Draw floor + object */
+        if( floor == FLAGSTONE )
+            putchar( 'A' + state );
+        else
+            putchar( 'a' + state );
+
+    if( x == ( BOARD_WIDTH - 1 ) )
+        putchar( '\n' );
+}
+
+/* Draw single cell */
+void draw_cell( struct board *board, struct cell *c, struct draw_context *target )
+{
+    draw_tile( target->rp, board->gfx, *c->state, *c->floor, c->x, c->y );
+}
+
+/* Draw the board in given context */
+void draw_board( struct board *board, struct draw_context *target )
+{
+    /* Draw each tile on the board - draw it */
+    for_each_cell( board, draw_cell, target );
+}
+
+/* Obtain pointer to first cell data */
+struct cell *first_cell( struct board *board )
+{
+    struct cell *c;
+
+    if( c = malloc( sizeof( *c ) ) ) {
+        c->state = ( UWORD * ) board->states;
+        c->floor = ( UWORD * ) board->floors;
+        c->x = 0;
+        c->y = 0;
+    }
+    return( c );
+}
+
+void free_cell( struct cell *c )
+{
+    if( c )
+        free( c );
+}
+
+/* Iterate through cells */
+struct cell *next_cell( struct board *board, struct cell *c )
+{
+    if( ++c->x == BOARD_WIDTH ) {
+        if( ++c->y == BOARD_HEIGHT )
+            return( NULL );
+        c->x = 0;
+    }
+    ++c->state;
+    ++c->floor;
+    return( c );
+}
+
+/* Execute command for each cell */
+void for_each_cell( struct board *board, void( *command )( struct board *board, struct cell *c, APTR context ), APTR context )
+{
+    struct cell *c;
+
+    for( c = first_cell( board ); c != NULL; c = next_cell( board, c ) )
+        command( board, c, context );
+
+    free_cell( c );
+}
+
+void init_cell( struct board *board, struct cell *c, APTR context )
+{
+    *c->floor = FLOOR;
+    if( c->x == 0 || c->x == BOARD_WIDTH - 1 || c->y == 0 || c->y == BOARD_HEIGHT - 1)
+        *c->state = WALL;
+    else if( c->x == board->x && c->y == board->y )
+        *c->state = HERO;
+    else
+        *c->state = NONE;
+}
+
+void clear_board( struct board *board )
+{
+    board->x = 1;
+    board->y = 1;
+    for_each_cell( board, init_cell, NULL );
+
+    board->states[ 2 ][ 2 ] = board->states[2][3] = BOX;
+    board->floors[ 3 ][ 3 ] = MUD;
+}
+
+struct cell *get_cell( struct cell *c, struct board *board, WORD x, WORD y )
+{
+    c->state = &board->states[ y ][ x ];
+    c->floor = &board->floors[ y ][ x ];
+    return( c );
+}
+
+void sibling( struct cell *s, struct cell *c, WORD dx, WORD dy )
+{
+    WORD offset = ( dy * BOARD_WIDTH ) + dx;
+
+    s->state = c->state + offset;
+    s->floor = c->floor + offset;
+    s->x += dx;
+    s->y += dy;
+}
+
+BOOL move_hero( struct board *board, WORD dx, WORD dy )
+{
+    WORD x = board->x, y = board->y;
+    struct cell c, dest, past;
+    get_cell( &c, board, x, y );
+    sibling( &dest, &c, dx, dy );
+    sibling( &past, &dest, dx, dy );
+
+    switch( *dest.state )
+    {
+        case NONE:
+            /* Only floor */
+            switch( *dest.floor )
+            {
+                case MUD:
+                    /* Mud */
+                    return( FALSE );
+            }
+            break;
+        case WALL:
+            return( FALSE );
+        case BOX:
+            switch( *past.state )
+            {
+                case NONE:
+                    switch( *past.floor )
+                    {
+                        case MUD:
+                            /* Fill mud */
+                            *past.floor = FILLED_MUD;
+                            break;
+                        default:
+                            /* Push box */
+                            *past.state = BOX;
+                            break;
+                    }
+                    break;
+                default:
+                    return( FALSE );
+            }
+            break;
+    }
+    /* Move */
+    *dest.state = HERO;
+    *c.state = NONE;
+    board->x += dx;
+    board->y += dy;
+    return( TRUE );
+}
+
+int main( void )
+{
+    struct board board;
+    struct draw_context dc;
+    int dir;
+    BOOL done = FALSE;
+    WORD dx, dy;
+
+    clear_board( &board );
+
+    while( !done ) {
+        draw_board( &board, &dc );
+        if( scanf( "%d", &dir ) == 1 ) {
+            dx = dy = 0;
+            switch( dir ) {
+                case 1:
+                    dx = -1;
+                    break;
+                case 2:
+                    dx = 1;
+                    break;
+                case 3:
+                    dy = -1;
+                    break;
+                case 4:
+                    dy = 1;
+                    break;
+                default:
+                    done = TRUE;
+            }
+            if( dx || dy )
+                move_hero( &board, dx, dy );
+        }
+        else
+            done = TRUE;
+    }
+
+    return( 0 );
+}
+@

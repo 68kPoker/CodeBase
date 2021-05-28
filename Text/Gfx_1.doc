@@ -1,0 +1,8 @@
+
+Graphics system:
+
+1. Async wait for Copper/Safe/Input/Timer/...
+2a. If Copper wait for Safe if required, finalize draw, wait for Disp, change.
+2b. If Safe start draw.
+2c. If Input handle Input, wait for Safe before draw.
+2d. If Timer do timed events.

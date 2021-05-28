@@ -1,0 +1,8 @@
+
+Otworzyê ekran oraz okno w tle do przyjmowania wiadomoôci.
+
+Napisaê funkcje rysowania wîasnych okienek, które pobierajâ wspóîrzëdne
+i rysujâ lub aktualizujâ okienko.
+
+Nastëpnie zmieniony region nanoszony jest na ekran za pomocâ szybkiej funkcji
+blitowania.

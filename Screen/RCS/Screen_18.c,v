@@ -1,0 +1,172 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    ; strict;
+comment  @ * @;
+
+
+1.1
+date     120.03.22.11.33.27;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Screen management.
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+/* $Log$ */
+
+#include <stdio.h>
+#include <exec/memory.h>
+#include <intuition/screens.h>
+
+#include <clib/exec_protos.h>
+#include <clib/diskfont_protos.h>
+#include <clib/intuition_protos.h>
+#include <clib/graphics_protos.h>
+
+#include "Screen.h"
+
+/*
+ * Obtain new screen object.
+ */
+struct screen *newScreen(struct TextAttr *ta)
+{
+    struct screen *s = AllocMem(sizeof *s, MEMF_PUBLIC|MEMF_CLEAR);
+
+    if (ta)
+    {
+        s->ta = *ta;
+        s->font = OpenDiskFont(ta);
+    }
+
+    return(s);
+}
+
+/*
+ * Dispose screen and its components.
+ */
+void disposeScreen(struct screen *s)
+{
+    if (s->font)
+        CloseFont(s->font);
+
+    if (s->colors)
+    {
+        WORD count = s->colors[0] >> 16;
+        LONG size = (count * 3) + 2;
+
+        printf("Freeing %d colors.\n", count);
+
+        FreeMem(s->colors, size * sizeof(ULONG));
+    }
+
+    if (s->buf[1])
+    {
+        FreeScreenBuffer(s->s, s->buf[1]);
+    }
+
+    if (s->buf[0])
+    {
+        FreeScreenBuffer(s->s, s->buf[0]);
+    }
+
+    if (s->ports[1])
+    {
+        waitSafe(s, 1);
+        DeleteMsgPort(s->ports[1]);
+    }
+
+    if (s->ports[0])
+    {
+        waitSafe(s, 0);
+        DeleteMsgPort(s->ports[0]);
+    }
+
+    if (s->s)
+    {
+        CloseScreen(s->s);
+    }
+
+    FreeMem(s, sizeof(*s));
+}
+
+ULONG *blankColors(struct screen *s, WORD colorCount)
+{
+    ULONG *pal;
+    LONG size = (colorCount * 3) + 2;
+
+    pal = AllocMem(size * sizeof(ULONG), MEMF_PUBLIC|MEMF_CLEAR);
+
+    if (pal)
+    {
+        pal[0] = colorCount << 16;
+        s->colors = pal;
+    }
+
+    return(pal);
+}
+
+struct BitMap *screenBitMap(struct screen *s, WORD width, WORD height, UBYTE depth)
+{
+    return(AllocBitMap(width, height, depth, BMF_DISPLAYABLE|BMF_CLEAR, NULL));
+}
+
+struct Screen *openScreen(struct screen *s, ULONG modeid)
+{
+    if (s->s = OpenScreenTags(NULL,
+        SA_DisplayID,   modeid,
+        s->bm[0]    ? SA_BitMap     : TAG_IGNORE,   s->bm[0],
+        s->colors   ? SA_Colors32   : TAG_IGNORE,   s->colors,
+        s->font     ? SA_Font       : TAG_IGNORE,   &s->ta,
+        SA_Exclusive,   TRUE,
+        SA_ShowTitle,   FALSE,
+        SA_Quiet,       TRUE,
+        TAG_DONE))
+    {
+        return(s->s);
+    }
+    return(NULL);
+}
+
+BOOL doubleBufPorts(struct screen *s)
+{
+    struct MsgPort *ports[2];
+
+    if (ports[0] = CreateMsgPort())
+    {
+        if (ports[1] = CreateMsgPort())
+        {
+            s->safe[0] = s->safe[1] = TRUE;
+            s->ports[0] = ports[0];
+            s->ports[1] = ports[1];
+            return(TRUE);
+        }
+        DeleteMsgPort(s->ports[0]);
+    }
+    return(FALSE);
+}
+
+struct ScreenBuffer *screenBuffer(struct screen *s, struct BitMap *bm)
+{
+    struct ScreenBuffer *buf;
+
+    if (buf = AllocScreenBuffer(s->s, bm, 0))
+    {
+        buf->sb_DBufInfo->dbi_SafeMessage.mn_ReplyPort = s->ports[0];
+        buf->sb_DBufInfo->dbi_DispMessage.mn_ReplyPort = s->ports[1];
+        return(buf);
+    }
+    return(NULL);
+}
+@

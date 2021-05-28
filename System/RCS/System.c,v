@@ -1,0 +1,304 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    Robert:1.1; strict;
+comment  @ * @;
+
+
+1.1
+date     120.04.22.17.02.05;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@System routines.
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+/* System.c */
+
+/* $Log$ */
+
+/* System.c: System specific routines   */
+/* IFF.c:    Data manipulation routines */
+/* Game.c:   Game specific routines     */
+
+#include <intuition/intuition.h>
+#include <graphics/videocontrol.h>
+
+#include <clib/intuition_protos.h>
+#include <clib/exec_protos.h>
+#include <clib/graphics_protos.h>
+
+#define PRI 120
+
+/* Signal sources */
+enum
+{
+    IDCMP, /* Window UserPort */
+    SAFE, /* SafeMessage */
+    DISP, /* DispMessage */
+    SIGNALS
+};
+
+struct Library *IntuitionBase, *GfxBase, *IFFParseBase;
+
+/* Open system libraries. Return TRUE on success. */
+BOOL openLibs()
+{
+    if (IntuitionBase = OpenLibrary("intuition.library", 39))
+    {
+        if (GfxBase = OpenLibrary("graphics.library", 39))
+        {
+            if (IFFParseBase = OpenLibrary("iffparse.library", 39))
+            {
+                return TRUE;
+            }
+            CloseLibrary(GfxBase);
+        }
+        CloseLibrary(IntuitionBase);
+    }
+    return FALSE;
+}
+
+/* Close all system libraries */
+void closeLibs()
+{
+    CloseLibrary(IFFParseBase);
+    CloseLibrary(GfxBase);
+    CloseLibrary(IntuitionBase);
+}
+
+/* Open main screen with given bitmap. Return screen. */
+struct Screen *openScreen(struct BitMap *bm, WORD width, WORD height, ULONG modeID)
+{
+    struct Screen *s;
+    struct TagItem vctags[] =
+    {
+        VC_IntermediateCLUpdate, FALSE,
+        TAG_DONE
+    };
+
+    if (s = OpenScreenTags(NULL,
+        SA_BitMap,      bm,
+        SA_Width,       width,
+        SA_Height,      height,
+        SA_DisplayID,   modeID,
+        SA_Quiet,       TRUE,
+        SA_ShowTitle,   FALSE,
+        SA_Exclusive,   TRUE,
+        SA_BackFill,    LAYERS_NOBACKFILL,
+        SA_PubName,     "MAGAZYN",
+        SA_VideoControl,    vctags,
+        TAG_DONE))
+    {
+        return s;
+    }
+    return NULL;
+}
+
+/* Open main window. Return window. */
+struct Window *openWindow(struct Screen *s)
+{
+    struct Window *w;
+
+    if (w = OpenWindowTags(NULL,
+        WA_PubScreen,       s,
+        WA_Left,            0,
+        WA_Top,             0,
+        WA_Width,           s->Width,
+        WA_Height,          s->Height,
+        WA_Backdrop,        TRUE,
+        WA_Borderless,      TRUE,
+        WA_Activate,        TRUE,
+        WA_RMBTrap,         TRUE,
+        WA_IDCMP,           IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
+        WA_ReportMouse,     TRUE,
+        WA_SimpleRefresh,   TRUE,
+        WA_BackFill,        LAYERS_NOBACKFILL,
+        TAG_DONE))
+    {
+        return w;
+    }
+    return NULL;
+}
+
+/* Alloc and attach message ports to DBufInfo. Return DBufInfo. */
+struct DBufInfo *attachDBufInfo(struct ViewPort *vp)
+{
+    struct DBufInfo *dbi;
+
+    if (dbi = AllocDBufInfo(vp))
+    {
+        if (dbi->dbi_SafeMessage.mn_ReplyPort = CreateMsgPort())
+        {
+            if (dbi->dbi_DispMessage.mn_ReplyPort = CreateMsgPort())
+            {
+                return dbi;
+            }
+            DeleteMsgPort(dbi->dbi_SafeMessage.mn_ReplyPort);
+        }
+        FreeDBufInfo(dbi);
+    }
+    return NULL;
+}
+
+/* Free DBufInfo. NOTE: Messages must have been obtained! */
+void freeDBufInfo(struct DBufInfo *dbi)
+{
+    DeleteMsgPort(dbi->dbi_DispMessage.mn_ReplyPort);
+    DeleteMsgPort(dbi->dbi_SafeMessage.mn_ReplyPort);
+    FreeDBufInfo(dbi);
+}
+
+/* Main loop. Handle window and DBufInfo events. */
+LONG mainLoop(struct Window *w, struct DBufInfo *dbi, struct BitMap *bm[])
+{
+    struct MsgPort *ports[SIGNALS] =
+    {
+        w->UserPort,
+        dbi->dbi_SafeMessage.mn_ReplyPort,
+        dbi->dbi_DispMessage.mn_ReplyPort
+    };
+    WORD i;
+    WORD frame = 1;
+    BOOL safe[2] = { FALSE };
+
+    ULONG signals[SIGNALS], total = 0L;
+    BOOL done = FALSE;
+    struct Screen *s = w->WScreen;
+    struct ViewPort *vp = &s->ViewPort;
+    struct RastPort *rp = w->RPort;
+
+    /* Change for the first time */
+
+    ChangeVPBitMap(vp, bm[frame], dbi);
+    frame ^= 1;
+
+    for (i = 0; i < SIGNALS; i++)
+    {
+        total |= signals[i] = 1L << ports[i]->mp_SigBit;
+    }
+
+    while (!done)
+    {
+        ULONG result = Wait(total);
+
+        if (result & signals[IDCMP])
+        {
+            struct IntuiMessage *msg;
+
+            while (msg = (struct IntuiMessage *)GetMsg(ports[IDCMP]))
+            {
+                ULONG class = msg->Class;
+                WORD code = msg->Code, mx = msg->MouseX, my = msg->MouseY;
+
+                ReplyMsg((struct Message *)msg);
+
+                /* Handle messages. */
+                if (class == IDCMP_RAWKEY && code == 0x45)
+                    done = TRUE;
+            }
+        }
+
+        if (result & signals[SAFE])
+        {
+            if (!safe[0])
+                while (!GetMsg(ports[SAFE]))
+                    WaitPort(ports[SAFE]);
+
+            /* Safe to draw. */
+            safe[0] = TRUE;
+
+            static WORD pos = 0;
+
+            rp->BitMap = bm[frame];
+            Move(rp, pos, rp->Font->tf_Baseline);
+            SetAPen(rp, 1);
+            SetDrMd(rp, JAM2);
+            Text(rp, " Amiga", 6);
+            pos++;
+        }
+
+        if (result & signals[DISP])
+        {
+            if (!safe[1])
+                while (!GetMsg(ports[DISP]))
+                    WaitPort(ports[DISP]);
+
+            /* Safe to change. */
+            safe[1] = TRUE;
+
+            ChangeVPBitMap(vp, bm[frame], dbi);
+            frame ^= 1;
+            safe[0] = safe[1] = FALSE;
+        }
+    }
+
+    if (!safe[1])
+        while (!GetMsg(ports[DISP]))
+            WaitPort(ports[DISP]);
+
+    if (!safe[0])
+        while (!GetMsg(ports[SAFE]))
+            WaitPort(ports[SAFE]);
+
+    return 0;
+}
+
+/* Main routine. */
+int main()
+{
+    const WORD raswidth = 320, width = raswidth,
+        rasheight = 256, height = rasheight,
+        depth = 5;
+    const ULONG modeID = LORES_KEY;
+
+    struct Screen *s;
+    struct BitMap *bm[2];
+    struct DBufInfo *dbi;
+    struct Window *w;
+    struct Task *task;
+
+    if (task = FindTask(NULL))
+        SetTaskPri(task, PRI);
+
+    if (openLibs())
+    {
+        if (bm[0] = AllocBitMap(raswidth, rasheight, depth, BMF_DISPLAYABLE|BMF_CLEAR, NULL))
+        {
+            if (bm[1] = AllocBitMap(raswidth, rasheight, depth, BMF_DISPLAYABLE|BMF_CLEAR, NULL))
+            {
+                if (s = openScreen(bm[0], width, height, modeID))
+                {
+                    if (w = openWindow(s))
+                    {
+                        if (dbi = attachDBufInfo(&s->ViewPort))
+                        {
+                            mainLoop(w, dbi, bm);
+                            freeDBufInfo(dbi);
+                        }
+                        CloseWindow(w);
+                    }
+                    CloseScreen(s);
+                }
+                FreeBitMap(bm[1]);
+            }
+            FreeBitMap(bm[0]);
+        }
+        closeLibs();
+    }
+    if (task)
+        SetTaskPri(task, 0);
+    return 0;
+}
+@

@@ -1,0 +1,52 @@
+head     1.2;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+1.2
+date     121.03.03.14.20.08;  author Robert;  state Exp;
+branches ;
+next     1.1;
+
+1.1
+date     121.02.18.23.42.34;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Tile drawing routines header.
+@
+
+
+1.2
+log
+@Improvements.
+@
+text
+@
+#include <exec/types.h>
+
+void drawBoard(struct gameInfo *gi, struct RastPort *rp, struct Board *board, struct BitMap *bm, struct BitMap *gfx, WORD sx, WORD sy, WORD ex, WORD ey);
+
+void drawTile(struct BitMap *gfx, UWORD sx, UWORD sy, struct BitMap *bm, UWORD dx, UWORD dy, UWORD width, UWORD height);
+BOOL cutImage(struct Image *img, struct BitMap *bm, WORD x, WORD y, WORD width, WORD height);
+void freeImage(struct Image *img);
+
+void updateStatus(struct RastPort *rp, struct Board *board, struct gameState *gs);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 1
+a4 1
+void drawBoard(struct Board *board, struct BitMap *bm, struct BitMap *gfx, WORD sx, WORD sy, WORD ex, WORD ey);
+d9 2
+@

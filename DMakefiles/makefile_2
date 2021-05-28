@@ -1,0 +1,5 @@
+DBuf:
+ cppc DBuf.o Copper.o -l MCPP:Libs/amiga.lib
+DBuf.o: DBuf.c
+ cc DBuf.c
+Copper.o:

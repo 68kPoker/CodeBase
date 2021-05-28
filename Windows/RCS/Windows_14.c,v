@@ -1,0 +1,13 @@
+head     ;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+
+desc
+@Windows functions.
+@
+

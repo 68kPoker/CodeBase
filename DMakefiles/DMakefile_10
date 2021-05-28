@@ -1,0 +1,25 @@
+
+src = Init.c Game.c Audio.c IFF.c Screen.c Tile.c Window.c
+obj = $(src:*.c:Obj/%1.o)
+exe = Game
+
+$(exe):	$(obj) Obj/Copper.o
+	dcc %(right) -s -d1 -o %(left)
+
+$(obj):	$(src)
+	dcc %(right) -c -o %(left)
+
+Obj/Init.o:	Audio.h Game.h IFF.h Init.h Screen.h Tile.h Window.h
+
+Obj/Game.o: Game.h
+
+Obj/Audio.o: Audio.h
+
+Obj/IFF.o: IFF.h
+
+Obj/Screen.o: Screen.h
+
+Obj/Window.o: Window.h
+
+$(obj): debug.h
+

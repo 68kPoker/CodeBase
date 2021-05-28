@@ -1,0 +1,1 @@
+dcc Misc.o IFF.o Game.o Copper.o Windows.o Screen.o /iff/modules/loadilbm.o /iff/modules/parse.o /iff/modules/ilbmr.o /iff/modules/unpacker.o /iff/modules/getbitmap.o /iff/modules/iffpstrings.o

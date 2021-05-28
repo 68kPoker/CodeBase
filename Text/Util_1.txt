@@ -1,0 +1,4 @@
+
+This drawer contains utility functions.
+
+	Screen.c: Intuition screen management with Copper and DBufInfo.

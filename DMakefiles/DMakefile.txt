@@ -1,0 +1,4 @@
+
+DMakefile_1
+
+Budowanie gry z wykorzystaniem Game.c, Screen.c i NewIFF39.

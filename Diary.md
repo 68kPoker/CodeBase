@@ -1,5 +1,11 @@
 # Warehouse - Diary
 
+28 May 2021
+
+OK, I managed to gather 608+ source code files from this year only!
+I've put it into separate directories.
+The next step will be to get the most complete files and build the game.
+
 16 February 2021
 
 Lots of good happened! Further description tommorow. Now I check-in the latest

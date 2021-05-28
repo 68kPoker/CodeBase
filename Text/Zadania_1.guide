@@ -1,0 +1,108 @@
+@database Zadania.guide
+@help pomoc
+@node main "Zadania do wykonania"
+
+@{fg highlight}GÎÓWNE ZADANIA@{fg text}
+
+@{"1. Wspólne elementy " link zadanie1}
+@{"2. Edytor plansz " link zadanie2}
+@{"3. Silnik gry " link zadanie3}
+
+@endnode
+@node pomoc "Pomoc"
+
+@{fg highlight}POMOC@{fg text}
+
+Ten dokument opisuje projekt gry Magazyn
+oraz wspólne elementy projektów.
+@endnode
+
+@node zadanie1 "Wspólne elementy"
+
+@{fg highlight}WSPÓLNE KOMPONENTY@{fg text}
+
+@{"1a. Ekran i okno " link zadanie1a}
+@{"1b. Joystick " link zadanie1b}
+@{"1c. Grafika " link zadanie1c}
+@{"1d. Format planszy " link zadanie1d}
+
+@endnode
+@node zadanie1a "Ekran i okno"
+
+@{fg highlight}EKRAN I OKNO@{fg text}
+
+- Otwarcie czcionki - OpenDiskFont(),
+- Alokacja bitmap,
+- Otwarcie ekranu,
+- Alokacja buforów ekranu,
+- Otwarcie okna w tle.
+
+@endnode
+@node zadanie1b "Joystick"
+
+@{fg highlight}JOYSTICK@{fg text}
+
+Alokacja:
+
+- Utworzenie portu za pomocâ CreateMsgPort(),
+- Utworzenie IOStdReq CreateIORequest(),
+- Otwarcie gameport.device unit 1 OpenDevice(),
+- Alokacja kontrolera (GPD_ASKCTYPE / GPD_SETCTYPE),
+- Ustawienie warunków (GPD_SETTRIGGER),
+- Wyczyszczenie komunikatów (CMD_CLEAR),
+- Odczytanie zdarzenia (GPD_READEVENT).
+
+Zamkniëcie:
+
+- Zatrzymanie komunikatu (CheckIO / AbortIO),
+- Przywrócenie kontrolera (GPD_SETCTYPE),
+- Zamkniëcie gameport.device.
+
+@endnode
+
+@node zadanie1c "Grafika"
+
+@{fg highlight}GRAFIKA@{fg text}
+
+- Odczytanie palety i obrazka z grafikâ (IFF),
+- Rysowanie kafli.
+
+@endnode
+
+@node zadanie1d "Format planszy"
+
+@{fg highlight}FORMAT PLANSZY@{fg text}
+
+- Dwuwymiarowa tablica kafli,
+- Wyliczenie kafli:
+	
+	- PODLOGA,
+	- SCIANA,
+	- SKRZYNIA,
+	- ...
+
+- Zapis oraz odczyt plansz,
+- Wyôwietlanie planszy.
+
+@endnode
+
+@node zadanie2 "Edytor plansz"
+
+@{fg highlight}EDYTOR PLANSZ@{fg text}
+
+- Obsîuga myszy - wklejanie kafli, wybór kafla, opcje,
+- Wstawianie bohatera.
+
+@endnode
+
+@node zadanie3 "Silnik gry"
+
+@{fg highlight}SILNIK GRY@{fg text}
+
+- Obsîuga klawiatury i joysticka,
+- Konwersja planszy do formatu gry,
+- Ruch bohatera po planszy,
+- Interakcja z otoczeniem,
+- Obsîuga elementów gry.
+
+@endnode

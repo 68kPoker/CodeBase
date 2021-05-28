@@ -1,0 +1,13 @@
+
+src = Config.c Video.c Data.c Game.c
+obj = $(src:*.c:%1.o)
+exe = Warehouse
+
+$(exe):	$(obj)
+	dcc %(right) -o %(left)
+
+$(obj): $(src)
+	dcc %(right) -c -o %(left)
+
+$(obj):: Video.h Data.h Config.h
+

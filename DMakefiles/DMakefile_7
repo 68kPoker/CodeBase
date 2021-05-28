@@ -1,0 +1,35 @@
+
+src = Game.c Engine.c GfxAnim.c IFF.c Joystick.c Screen.c WinGad.c System.c
+
+obj = $(src:*.c:obj/%1.o)
+
+exe = exe/Game
+
+copts = -Iinc -Iproto
+lopts =
+
+$(exe):$(obj)
+	dcc %(right) $(lopts) -o %(left)
+
+$(obj):$(src)
+	dcc %(right) $(copts) -c -o %(left)
+
+obj/IFF.o: inc/IFF.h proto/IFF_protos.h
+
+obj/Engine.o: inc/Engine.h \
+	  proto/Engine_protos.h
+
+obj/Joystick.o: inc/Joystick.h \
+	    proto/Joystick_protos.h
+
+obj/Screen.o: inc/Screen.h inc/IFF.h inc/System.h \
+	  proto/Screen_protos.h
+
+obj/WinGad.o: inc/WinGad.h inc/Screen.h inc/IFF.h inc/System.h \
+	  proto/WinGad_protos.h
+
+obj/System.o: inc/Game.h inc/System.h inc/Screen.h inc/WinGad.h inc/IFF.h inc/Engine.h \
+	    proto/System_protos.h proto/Screen_protos.h proto/WinGad_protos.h inc/IFF_protos.h inc/Engine_protos.h
+
+obj/Game.o: inc/Game.h inc/System.h \
+	proto/Game_protos.h

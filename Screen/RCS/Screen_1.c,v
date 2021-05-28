@@ -1,0 +1,161 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+1.1
+date     121.05.23.12.08.46;  author RS;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Opening screen.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+/*=================================================================*/
+/* $Log$ */
+/*=================================================================*/
+
+#include <intuition/screens.h>
+#include <exec/interrupts.h>
+#include <exec/memory.h>
+#include <graphics/gfxmacros.h>
+#include <hardware/custom.h>
+#include <hardware/intbits.h>
+
+#include <clib/graphics_protos.h>
+#include <clib/exec_protos.h>
+#include <clib/intuition_protos.h>
+
+#include "Screen.h"
+
+__far extern struct Custom custom;
+void myCopper(void);
+
+/*=================================================================*/
+/* Open game screen */
+
+/* Load color palette and resolution from IFF ILBM */
+/* s:       Screen instance, */
+/* w, h, d: Width, height, depth dimensions */
+/* gfx:     Graphics instance */
+/* gfxName: Graphics name */
+
+/*=================================================================*/
+
+struct Screen *openScreen(struct screen *s, UWORD w, UWORD h, UBYTE d, struct graphics *gfx, STRPTR gfxName)
+{
+    if (getGraphics(gfx, gfxName))
+    {
+        if (s->bm[0] = AllocBitMap(w, h, d, BMF_DISPLAYABLE|BMF_INTERLEAVED, NULL))
+        {
+            if (s->bm[1] = AllocBitMap(w, h, d, BMF_DISPLAYABLE|BMF_INTERLEAVED, NULL))
+            {
+                /* TODO: Fill s->bm[0] with gfx->bm here. */
+
+                if (s->s = OpenScreenTags(NULL,
+                    SA_DClip,       &gfx->dclip,
+                    SA_BitMap,      s->bm[0],
+                    SA_DisplayID,   gfx->modeID,
+                    SA_Colors32,    gfx->pal,
+                    SA_Title,       "Gear works screen",
+                    SA_ShowTitle,   FALSE,
+                    SA_Quiet,       TRUE,
+                    SA_Exclusive,   TRUE,
+                    SA_BackFill,    LAYERS_NOBACKFILL,
+                    TAG_DONE))
+                {
+                    struct ViewPort *vp = &s->s->ViewPort;
+
+                    if (s->dbi = AllocDBufInfo(vp))
+                    {
+                        if (s->dbi->dbi_SafeMessage.mn_ReplyPort = CreateMsgPort())
+                        {
+                            struct copper *cop = &s->cop;
+
+                            s->safe = TRUE;
+                            s->frame = 1;
+                            s->gfx = gfx; /* Game graphics */
+
+                            cop->vp = vp;
+                            if ((cop->signal = AllocSignal(-1)) != -1)
+                            {
+                                struct Interrupt *is = &s->is;
+                                struct UCopList *ucl;
+
+                                cop->task = FindTask(NULL);
+
+                                is->is_Code = myCopper;
+                                is->is_Data = (APTR)cop;
+                                is->is_Node.ln_Pri = COP_PRI;
+
+                                if (ucl = AllocMem(sizeof(*ucl), MEMF_PUBLIC|MEMF_CLEAR))
+                                {
+                                    CINIT(ucl, 3);
+                                    CWAIT(ucl, COP_LINE, 0);
+                                    CMOVE(ucl, custom.intreq, INTF_SETCLR|INTF_COPER);
+                                    CEND(ucl);
+
+                                    Forbid();
+                                    vp->UCopIns = ucl;
+                                    Permit();
+
+                                    AddIntServer(INTB_COPER, is);
+                                    return(s->s);
+                                }
+                                FreeSignal(cop->signal);
+                            }
+                            DeleteMsgPort(s->dbi->dbi_SafeMessage.mn_ReplyPort);
+                        }
+                        FreeDBufInfo(s->dbi);
+                    }
+                    CloseScreen(s->s);
+                }
+                FreeBitMap(s->bm[1]);
+            }
+            FreeBitMap(s->bm[0]);
+        }
+        freeGraphics(gfx);
+    }
+    return(NULL);
+}
+
+/*=================================================================*/
+/* Close game screen */
+
+/*=================================================================*/
+
+void closeScreen(struct screen *s)
+{
+    struct MsgPort *mp = s->dbi->dbi_SafeMessage.mn_ReplyPort;
+
+    RemIntServer(INTB_COPER, &s->is);
+    FreeSignal(s->cop.signal);
+
+    if (!s->safe)
+    {
+        while (!GetMsg(mp))
+        {
+            WaitPort(mp);
+        }
+    }
+
+    DeleteMsgPort(mp);
+    FreeDBufInfo(s->dbi);
+    CloseScreen(s->s);
+    FreeBitMap(s->bm[1]);
+    FreeBitMap(s->bm[0]);
+    freeGraphics(s->gfx);
+}
+@

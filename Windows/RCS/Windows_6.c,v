@@ -1,0 +1,241 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    Robert:1.1; strict;
+comment  @ * @;
+
+
+1.1
+date     121.01.03.14.35.27;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Game.
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+#include <intuition/intuition.h>
+#include <hardware/custom.h>
+#include <hardware/blit.h>
+#include <graphics/rpattr.h>
+
+#include <clib/intuition_protos.h>
+#include <clib/graphics_protos.h>
+
+#define HEIGHT 240
+#define IDCMP  IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE|IDCMP_REFRESHWINDOW|IDCMP_ACTIVEWINDOW
+
+__far extern struct Custom custom;
+
+/* Open game window context */
+
+struct Window *openWindow(struct Screen *s)
+{
+    struct Window *w;
+
+    if (w = OpenWindowTags(NULL,
+        WA_CustomScreen,    s,
+        WA_Left,            0,
+        WA_Top,             s->BarHeight,
+        WA_Width,           s->Width,
+        WA_Height,          HEIGHT,
+        WA_Borderless,      TRUE,
+        WA_RMBTrap,         TRUE,
+        WA_Activate,        TRUE,
+        WA_SimpleRefresh,   TRUE,
+        WA_IDCMP,           IDCMP,
+        WA_BackFill,        LAYERS_NOBACKFILL,
+        WA_ReportMouse,     TRUE,
+        WA_ScreenTitle,     "Warehouse (C)2018-2020 Robert Szacki",
+        TAG_DONE))
+    {
+        return w;
+    }
+    return NULL;
+}
+
+/* Alloc friend bitmap */
+
+struct BitMap *allocFriend(struct Window *w)
+{
+    struct BitMap *bm, *friend = w->RPort->BitMap;
+
+    if (bm = AllocBitMap(w->Width, w->Height, GetBitMapAttr(friend, BMA_DEPTH), BMF_INTERLEAVED, NULL))
+    {
+        return bm;
+    }
+    return NULL;
+}
+
+/* Clear bitmap + draw frame */
+
+void clearBitMap(struct BitMap *bm)
+{
+    struct RastPort rp;
+
+    InitRastPort(&rp);
+    rp.BitMap = bm;
+
+    SetRPAttrs(&rp,
+        RPTAG_APen,         0,
+        RPTAG_OutlinePen,   1,
+        TAG_DONE);
+
+    RectFill(&rp, 0, 0, GetBitMapAttr(bm, BMA_WIDTH) - 1, GetBitMapAttr(bm, BMA_HEIGHT) - 1);
+}
+
+/* Draw logo */
+
+void drawText(struct BitMap *bm, WORD x, WORD y, STRPTR text)
+{
+    struct RastPort rp;
+
+    InitRastPort(&rp);
+    rp.BitMap = bm;
+
+    SetRPAttrs(&rp,
+        RPTAG_APen,         2,
+        TAG_DONE);
+
+    Move(&rp, x, y + rp.Font->tf_Baseline);
+    Text(&rp, text, strlen(text));
+}
+
+/* Clear window */
+
+void fastClear(struct Window *w, struct BitMap *bm)
+{
+    struct Custom *cust = &custom;
+    struct BitMap *dest = w->RPort->BitMap;
+    WORD bpr = bm->BytesPerRow, destbpr = dest->BytesPerRow;
+
+    OwnBlitter();
+    WaitBlit();
+
+    cust->bltcon0 = SRCA | DEST | A_TO_D;
+    cust->bltcon1 = 0;
+    cust->bltapt  = bm->Planes[0];
+    cust->bltdpt  = dest->Planes[0] + (w->TopEdge * destbpr);
+    cust->bltamod = 0;
+    cust->bltdmod = 0;
+    cust->bltafwm = 0xffff;
+    cust->bltalwm = 0xffff;
+    cust->bltsizv = w->Height * GetBitMapAttr(dest, BMA_DEPTH);
+    cust->bltsizh = w->Width >> 4;
+
+    DisownBlitter();
+}
+
+/* Update portion */
+
+void update(struct Window *w, struct BitMap *bm, WORD sx, WORD sy, WORD x, WORD y, WORD width, WORD height)
+{
+    struct Custom *cust = &custom;
+    struct BitMap *dest = w->RPort->BitMap;
+    WORD bpr = bm->BytesPerRow, destbpr = dest->BytesPerRow;
+    UBYTE depth = GetBitMapAttr(dest, BMA_DEPTH);
+
+    x >>= 4;
+    sx >>= 4;
+    width >>= 4;
+
+    OwnBlitter();
+    WaitBlit();
+
+    cust->bltcon0 = SRCA | DEST | A_TO_D;
+    cust->bltcon1 = 0;
+    cust->bltapt  = bm->Planes[0] + (sy * bpr) + (sx << 1);
+    cust->bltdpt  = dest->Planes[0] + ((w->TopEdge + y) * destbpr) + (x << 1);
+    cust->bltamod = (bpr / depth) - (width << 1);
+    cust->bltdmod = (destbpr / depth) - (width << 1);
+    cust->bltafwm = 0xffff;
+    cust->bltalwm = 0xffff;
+    cust->bltsizv = height * depth;
+    cust->bltsizh = width;
+
+    DisownBlitter();
+}
+
+/* Update portion */
+
+void updateBob(struct Window *w, struct BitMap *bm, WORD sx, WORD sy, WORD x, WORD y, WORD width, WORD height)
+{
+    struct Custom *cust = &custom;
+    struct BitMap *dest = w->RPort->BitMap;
+    WORD bpr = bm->BytesPerRow, destbpr = dest->BytesPerRow;
+    UBYTE depth = GetBitMapAttr(dest, BMA_DEPTH);
+
+    UBYTE xshift = x & 0xf;
+
+    x >>= 4;
+    sx >>= 4;
+    width >>= 4;
+    width++;
+
+    OwnBlitter();
+    WaitBlit();
+
+    cust->bltcon0 = SRCB | SRCC | DEST | 0xca | (xshift << ASHIFTSHIFT);
+    cust->bltcon1 = xshift << BSHIFTSHIFT;
+    cust->bltadat = 0xffff;
+    cust->bltbpt  = bm->Planes[0] + (sy * bpr) + (sx << 1);
+    cust->bltcpt  = dest->Planes[0] + ((w->TopEdge + y) * destbpr) + (x << 1);
+    cust->bltdpt  = dest->Planes[0] + ((w->TopEdge + y) * destbpr) + (x << 1);
+    cust->bltbmod = (bpr / depth) - (width << 1);
+    cust->bltcmod = (destbpr / depth) - (width << 1);
+    cust->bltdmod = (destbpr / depth) - (width << 1);
+    cust->bltafwm = 0xffff;
+    cust->bltalwm = 0x0000;
+    cust->bltsizv = height * depth;
+    cust->bltsizh = width;
+
+    DisownBlitter();
+}
+
+int main()
+{
+    struct Screen *s;
+    struct RastPort rp;
+
+    if (s = LockPubScreen(NULL))
+    {
+        struct Window *w;
+        if (w = openWindow(s))
+        {
+            struct BitMap *bm;
+            if (bm = allocFriend(w))
+            {
+                WORD i;
+
+                clearBitMap(bm);
+                drawText(bm, 17, 2, "Warehouse Sokoban Game");
+                fastClear(w, bm);
+
+                InitRastPort(&rp);
+                rp.BitMap = bm;
+
+                for (i = 0; i < 100; i++)
+                {
+                    updateBob(w, bm, 16, 2, 2 + i, 20, 320, 10);
+                    WaitTOF();
+                }
+                Delay(200);
+                FreeBitMap(bm);
+            }
+            CloseWindow(w);
+        }
+        UnlockPubScreen(NULL, s);
+    }
+    return 0;
+}
+@

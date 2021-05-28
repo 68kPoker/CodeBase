@@ -1,0 +1,59 @@
+head     1.2;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+1.2
+date     121.03.03.14.19.57;  author Robert;  state Exp;
+branches ;
+next     1.1;
+
+1.1
+date     121.02.18.23.42.15;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Screen routines header.
+@
+
+
+1.2
+log
+@Improvements.
+@
+text
+@
+#include <exec/types.h>
+
+#define COPLINE 16
+
+struct copperData
+{
+    struct ViewPort *vp;
+    WORD signal;
+    struct Task *task;
+};
+
+struct BitMap *allocBitMap(void);
+struct Screen *openScreen(struct BitMap *bm, struct TextFont **tf);
+BOOL addCopperInt(struct Interrupt *is, struct copperData *cd, struct ViewPort *vp);
+void remCopperInt(struct Interrupt *is);
+BOOL addCopperList(struct ViewPort *vp);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 2
+d13 1
+a13 1
+struct BitMap *allocBitMap();
+@

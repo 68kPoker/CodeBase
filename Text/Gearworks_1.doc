@@ -1,0 +1,23 @@
+
+Gear works game framework.
+
+Planned frameworks:
+
+----------------------------------------
+GWScreen.h	: Screen manipulation
+GWWindow.h	: Windows 
+GWGadget.h	: Gadgets
+GWMenu.h	: Menu
+GWGfx.h		: Graphics
+GWIFF.h		: IFF
+GWILBM.h	: ILBM pictures
+GW8SVX.h	; 8SVX sounds
+GWAudio.h	: Audio
+GWTimer.h	: Timer
+GWCopper.h	: Copper
+GWBlit.h	: Blitter
+GWGELS.h	: Graphics elements
+GWChunky.h	: Chunky
+GWLibs.h	: Libraries
+GWMusic.h	: Music
+----------------------------------------

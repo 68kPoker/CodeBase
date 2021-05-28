@@ -1,0 +1,49 @@
+head     1.1;
+branch   ;
+access   ;
+symbols  ;
+locks    ; strict;
+comment  @@;
+
+
+1.1
+date     121.03.03.14.20.58;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@Copper asm routine.
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+	incdir	'includes:'
+	include	'graphics/view.i'
+	include	'lvo/exec_lib.i'
+
+	xdef	_myCopper
+
+_myCopper:
+
+	movea.l	(a1)+,a0
+	move.w	vp_Modes(a0),d0
+	andi.w	#V_VP_HIDE,d0
+	bne.s	.skip
+
+	move.w	(a1)+,d1
+	moveq	#1,d0
+	movea.l	(a1),a1
+	lsl.l	d1,d0
+	movea.l	4.w,a6
+	jsr	_LVOSignal(a6)
+.skip:
+	moveq	#0,d0
+	rts
+@

@@ -1,0 +1,21 @@
+
+src = Game.c System.c GUI.c Joystick.c Data.c
+obj = $(src:*.c:%1.o)
+exe = Game
+
+$(exe):     $(obj)
+    dcc %(right) -o %(left)
+
+$(obj):     $(src)
+    dcc %(right) -c -o %(left)
+
+Game.o:     System.h GUI.h Joystick.h Data.h
+
+System.o:   System.h GUI.h Joystick.h Data.h
+
+GUI.o:      GUI.h
+
+Joystick.o: Joystick.h
+
+Data.o:     Data.h
+

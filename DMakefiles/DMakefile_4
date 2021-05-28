@@ -1,0 +1,10 @@
+
+SRC = Magazyn.c GWLibs.c GWScreen.c
+OBJ = $(SRC:*.c:Obj/%1.o)
+EXE = Magazyn
+
+$(EXE): $(OBJ)
+	dcc %(right) -o %(left)
+
+$(OBJ): $(SRC)
+	dcc %(right) -c -o %(left)

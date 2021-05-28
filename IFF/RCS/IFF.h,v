@@ -1,0 +1,60 @@
+head     1.2;
+branch   ;
+access   ;
+symbols  ;
+locks    ;
+comment  @ * @;
+
+
+1.2
+date     121.03.03.14.18.46;  author Robert;  state Exp;
+branches ;
+next     1.1;
+
+1.1
+date     121.02.18.23.41.53;  author Robert;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@IFF routines header.
+@
+
+
+1.2
+log
+@Playable game.
+@
+text
+@
+#include <exec/types.h>
+#include <datatypes/soundclass.h>
+
+struct soundSample
+{
+    struct VoiceHeader vhdr;
+    BYTE *data;
+    LONG size;
+};
+
+struct IFFHandle *openIFF(STRPTR name, LONG mode);
+void closeIFF(struct IFFHandle *iff);
+BOOL scanILBM(struct IFFHandle *iff);
+BOOL loadCMAP(struct IFFHandle *iff, struct Screen *s);
+struct BitMap *loadBitMap(struct IFFHandle *iff);
+
+BOOL loadSample(STRPTR name, struct soundSample *s);
+void freeSample(struct soundSample *s);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 1
+d5 7
+d17 3
+@

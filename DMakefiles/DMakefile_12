@@ -1,0 +1,24 @@
+
+src = Rectangle.c Screen.c Window.c Tile.c Board.c Gadget.c Game.c
+obj = $(src:*.c:%1.o)
+exe = Game
+
+$(exe):	$(obj)
+	dcc %(right) -o %(left)
+
+$(obj):	$(src)
+	dcc %(right) -c -o %(left)
+
+Rectangle.o:	Rectangle.h
+
+Screen.o:	Screen.h
+
+Window.o:	Window.h Screen.h
+
+Tile.o:		Tile.h
+
+Board.o:	Board.h Tile.h
+
+Gadget.o:	Gadget.h Board.h Tile.h Window.h
+
+Game.o:		Screen.h Window.h Gadget.h Board.h Tile.h

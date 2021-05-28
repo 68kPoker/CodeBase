@@ -1,0 +1,20 @@
+
+src = Windows.c IFF.c Copper.c Gadgets.c
+obj = $(src:*.c:%1.o)
+exe = Game
+copts =
+lopts =
+
+$(exe):	$(obj) Asm.o
+	dcc %(right) $(lopts) -o %(left)
+
+$(obj):	$(src)
+	dcc %(right) $(copts) -c -o %(left)
+
+Windows.o:	Windows.h Gadgets.h
+
+IFF.o:		IFF.h
+
+Copper.o:	Copper.h
+
+Gadgets.o:	Gadgets.h

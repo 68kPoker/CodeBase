@@ -1,0 +1,8 @@
+
+Plan prac
+
+Podziaî kolorów:
+
+Tîo i obiekty korzystajâ z puli 16 kolorów.
+Do ich modyfikacji wystarczy modyfikacja 4 bitplanów.
+Pozostaîe 16 kolorów jest przeznaczone na inne elementy.

@@ -1,0 +1,10 @@
+
+src = Game.c System.c Screen.c
+obj = $(src:*.c:Obj/%1.o)
+exe = Game
+
+$(exe):	$(obj) Asm.o
+	dcc %(right) -o %(left)
+
+$(obj):	$(src)
+	dcc %(right) -c -o %(left)
