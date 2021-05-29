@@ -1,6 +1,6 @@
 # Game specific API notes
 	
-- Board/Cell_1.c/h
+- [Board/Cell_1.c/h](https://github.com/68kPoker/Magazyn/blob/master/Board/Cell_1.c)
 
 	- Exported functions
 	
@@ -18,13 +18,13 @@
 	
 		Further description is not required
 
-- Editor/Editor_1.c
+- [Editor/Editor_1.c](https://github.com/68kPoker/Magazyn/blob/master/Editor/Editor_1.c)
 
 	- Exported functions
 	
 		- odlegloscCentrum() - Calcs the distance from the center
 		
-- Editor/BoardED_1.c
+- [Editor/BoardED_1.c](https://github.com/68kPoker/Magazyn/blob/master/Editor/BoardED_1.c)
 	
 	- Exported functions
 	
@@ -37,7 +37,7 @@
 		
 		This file has a nice Board-as-Gadget approach.
 
-- Engine/Engine_2.c/h
+- [Engine/Engine_2.c/h](https://github.com/68kPoker/Magazyn/blob/master/Engine/Engine/Engine_2.c)
 
 	- Exported functions
 	
@@ -45,13 +45,13 @@
 		- enter() - Cell entry handler
 		- leave() - Cell exit handler
 
-- Engine/Object_1.c
+- [Engine/Object_1.c](https://github.com/68kPoker/Magazyn/blob/master/Engine/Object_1.c)
 
 	- Exported functions
 	
 		- objectRotate() - Handles object rotation
 
-- Game/Game_2.c/h
+- [Game/Game_2.c/h](https://github.com/68kPoker/Magazyn/blob/master/Game/Game_2.c)
 
 	- Exported functions
 	
@@ -63,7 +63,7 @@
 		- moveObject() - Moves (copies) object 
 		- clearObject() - Discard object
 		 		
-- Game/Game_32.c/h
+- [Game/Game_32.c/h](https://github.com/68kPoker/Magazyn/blob/master/Game/Game_32.c)
 
 	- Exported functions
 	

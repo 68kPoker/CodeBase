@@ -1,6 +1,6 @@
 # General API notes
 
-- Blit/Blitter_4.c/h
+- [Blit/Blitter_4.c/h](https://github.com/68kPoker/Magazyn/blob/master/Blit/Blitter_4.c)
 
 	- Exported functions
 
@@ -12,7 +12,7 @@
 
 		This needs to be looked into to complete it. Generally it's 100% complete but may require fixes.
 
-- Joystick/Joystick_2.c/h
+- [Joystick/Joystick_2.c/h](https://github.com/68kPoker/Magazyn/blob/master/Joystick/Joystick_2.c)
 
 	- Exported functions
 
@@ -24,7 +24,7 @@
 
 		This code is 100% complete and working.
 
-- Misc/Misc_2.c/h
+- [Misc/Misc_2.c/h](https://github.com/68kPoker/Magazyn/blob/master/Misc/Misc_2.c)
 
 	- Exported functions
 
@@ -37,7 +37,7 @@
 
 		This code is mainly to open libraries and setup basic system resources.
 
-- Screen/Screen_51.c/h
+- [Screen/Screen_51.c/h](https://github.com/68kPoker/Magazyn/blob/master/Screen/Screen_51.c)
 
 	- Exported functions
 	
@@ -52,7 +52,7 @@
 		This code is complete, but the DBufInfo should also be allocated (unless I will use RasInfo->BitMap).
 		The DBufInfo creation is in other file anyway.
 
-- Copper/Copper.s
+- [Copper/Copper.s](https://github.com/68kPoker/Magazyn/blob/master/Copper/Copper_1.s)
 
 	- Exported functions
 	
@@ -62,14 +62,14 @@
 	
 		This is written in assembly to properly handle Z condition code state.
 
-- Windows/Windows_24.c/h
+- [Windows/Windows_24.c/h](https://github.com/68kPoker/Magazyn/blob/master/Windows/Windows_24.c)
 
 	- Exported functions
 	
 		- openWindow() - Opens backdrop window
 		- mainLoop() - Main signal loop which covers window's UserPort as well as Safe message and Copper interrupt
 
-- IFF/IFF_4.c/h
+- [IFF/IFF_4.c/h](https://github.com/68kPoker/Magazyn/blob/master/Blit/Blitter_4.c/IFF/IFF_4.c)
 
 	- Exported functions
 	
@@ -82,7 +82,7 @@
 		- obtainBMHD() - Obtains BitMap Header
 		- loadILBM() - Reads ILBM body into BitMap
 
-- Gadgets_5.c/h
+- [Gadgets_5.c/h](https://github.com/68kPoker/Magazyn/blob/master/Gadgets_5.c)
 
 	- Exported functions
 	
@@ -91,7 +91,7 @@
 		- cutImage() - Cuts Image from BitMap
 		- freeImage() - Frees Image data
 
-- Audio/Audio_1.c/h
+- [Audio/Audio_1.c/h](https://github.com/68kPoker/Magazyn/blob/master/Audio/Audio_1.c)
 
 	- Exported functions
 	
