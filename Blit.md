@@ -1,3 +1,5 @@
+# Blit
+
 1. Blitter_4.c/h
 
 	a. Exported functions
@@ -8,5 +10,5 @@
 
 	b. Notes
 
-		This needs to be looked into to complete it. 
+		This needs to be looked into to complete it. Generally it's 100% complete but may require fixes.
 
