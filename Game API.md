@@ -37,7 +37,7 @@
 		
 		This file has a nice Board-as-Gadget approach.
 
-- [Engine/Engine_2.c/h](https://github.com/68kPoker/Magazyn/blob/master/Engine/Engine/Engine_2.c)
+- [Engine/Engine_2.c/h](https://github.com/68kPoker/Magazyn/blob/master/Engine/Engine_2.c)
 
 	- Exported functions
 	

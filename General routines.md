@@ -69,7 +69,7 @@
 		- openWindow() - Opens backdrop window
 		- mainLoop() - Main signal loop which covers window's UserPort as well as Safe message and Copper interrupt
 
-- [IFF/IFF_4.c/h](https://github.com/68kPoker/Magazyn/blob/master/Blit/Blitter_4.c/IFF/IFF_4.c)
+- [IFF/IFF_4.c/h](https://github.com/68kPoker/Magazyn/blob/master/IFF/IFF_4.c)
 
 	- Exported functions
 	
@@ -82,7 +82,7 @@
 		- obtainBMHD() - Obtains BitMap Header
 		- loadILBM() - Reads ILBM body into BitMap
 
-- [Gadgets_5.c/h](https://github.com/68kPoker/Magazyn/blob/master/Gadgets_5.c)
+- [Gadgets_5.c/h](https://github.com/68kPoker/Magazyn/blob/master/Gadgets/Gadgets_5.c)
 
 	- Exported functions
 	
