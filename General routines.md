@@ -68,3 +68,25 @@
 	
 		- openWindow() - Opens backdrop window
 		- mainLoop() - Main signal loop which covers window's UserPort as well as Safe message and Copper interrupt
+
+7. IFF/IFF_4.c/h
+
+	a. Exported functions
+	
+		- openIFile()/openIClip() - Opens Interchange File Format file fo reading or writing
+		- openIFF() - Allocates and opens IFF stream
+		- closeIFF() - Closes IFF stream
+		- scanIFF() - Scans IFF file for chunks
+		- obtainCMAP() - Obtains Color Map from ILBM
+		- loadCMAP() - Loads colors into Color Map
+		- obtainBMHD() - Obtains BitMap Header
+		- loadILBM() - Reads ILBM body into BitMap
+
+8. Gadgets_5.c/h
+
+	a. Exported functions
+	
+		- initText() - Inits IntuiText
+		- initButton() - Inits Gadget as Button
+		- cutImage() - Cuts Image from BitMap
+		- freeImage() - Frees Image data
