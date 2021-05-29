@@ -1,11 +1,12 @@
-# Blitter_4.c/h
+1. Blitter_4.c/h
 
-1. Exported functions
+	a. Exported functions
 
-- drawTile() - Draws single layer tile	
-- drawTileLayers() - Draws dual layer tile
-- drawTileRastPort - Draws tile into RastPort
+		- drawTile() - Draws single layer tile	
+		- drawTileLayers() - Draws dual layer tile
+		- drawTileRastPort - Draws tile into RastPort
 
-2. Notes
+	b. Notes
 
-This needs to be looked into to complete it. 
+		This needs to be looked into to complete it. 
+

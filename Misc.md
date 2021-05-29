@@ -1,17 +1,12 @@
-# Misc_2.c/h
+1. Misc_2.c/h
 
-1. Exported functions
+	a. Exported functions
 
-- GWopenLibs(ULONG minVersion) - Opens required libraries:
-	- Intuition,
-	- GadTools,
-	- Graphics,
-	- IFFParse
+		- GWopenLibs(ULONG minVersion) - Opens required libraries (Intuition, GadTools, Graphics, IFFParse)
+		- GWcleanup() - Closes opened libraries
+		- GWerror(STRPTR errorDesc) - Prints error string
+		- GWbailout(STRPTR errorDesc) - Prints error string and exits
 
-- GWcleanup() - Closes opened libraries
-- GWerror(STRPTR errorDesc) - Prints error string
-- GWbailout(STRPTR errorDesc) - Prints error string and exits
+	b. Notes
 
-2. Notes
-
-This code is mainly to open libraries and setup basic system resources.
+		This code is mainly to open libraries and setup basic system resources.
