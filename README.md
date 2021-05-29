@@ -9,6 +9,12 @@ I have managed to gather 608+ source code files from this year only.
 They have been put into separate directories. The next step will be to 
 get the code up and running.
 
+# Note (29.05.2021):
+
+I have managed to prepare Notes on API used by the game. It describes
+the functions provided by source files. It is divided into General
+and Game specific notes.
+
 It consists of various interesting engine features:
 - Fast and smooth animation with double-buffering and video coprocessor sync,
 - Direct usage of graphics blitter coprocessor for fast drawing operations,
