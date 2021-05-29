@@ -90,3 +90,11 @@
 		- initButton() - Inits Gadget as Button
 		- cutImage() - Cuts Image from BitMap
 		- freeImage() - Frees Image data
+
+- Audio/Audio_1.c/h
+
+	- Exported functions
+	
+		- allocChannels() - Allocates audio channels
+		- freeChannels() - Frees audio channels
+		- playSample() - Plays sound

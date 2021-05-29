@@ -41,7 +41,7 @@
 
 	- Exported functions
 	
-		- convertBoard() - Converts between editor and game format of the boad
+		- convertBoard() - Converts between editor and game format of the board
 		- enter() - Cell entry handler
 		- leave() - Cell exit handler
 
@@ -50,7 +50,19 @@
 	- Exported functions
 	
 		- objectRotate() - Handles object rotation
-		
+
+- Game/Game_2.c/h
+
+	- Exported functions
+	
+		- newGame() - Clears game board
+		- moveCheckHero() - Moves hero with checking
+		- canMove() - Checks if hero can move
+		- canPush() - Checks if hero can push box
+		- moveHero() - Moves hero withouth checking
+		- moveObject() - Moves (copies) object 
+		- clearObject() - Discard object
+		 		
 - Game/Game_32.c/h
 
 	- Exported functions
