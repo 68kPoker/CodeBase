@@ -36,3 +36,23 @@
 	- Notes
 		
 		This file has a nice Board-as-Gadget approach.
+
+- Engine/Engine_2.c/h
+
+	- Exported functions
+	
+		- convertBoard() - Converts between editor and game format of the boad
+		- enter() - Cell entry handler
+		- leave() - Cell exit handler
+
+- Engine/Object_1.c
+
+	- Exported functions
+	
+		- objectRotate() - Handles object rotation
+		
+- Game/Game_32.c/h
+
+	- Exported functions
+	
+		- loadBoard() - Load board data into record.
