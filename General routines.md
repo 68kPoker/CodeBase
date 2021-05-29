@@ -1,6 +1,6 @@
 # General API notes
 
-1. Blitter_4.c/h
+1. Blit/Blitter_4.c/h
 
 	a. Exported functions
 
@@ -12,7 +12,7 @@
 
 		This needs to be looked into to complete it. Generally it's 100% complete but may require fixes.
 
-2. Joystick_2.c/h
+2. Joystick/Joystick_2.c/h
 
 	a. Exported functions
 
@@ -24,7 +24,7 @@
 
 		This code is 100% complete and working.
 
-3. Misc_2.c/h
+3. Misc/Misc_2.c/h
 
 	a. Exported functions
 
@@ -36,3 +36,35 @@
 	b. Notes
 
 		This code is mainly to open libraries and setup basic system resources.
+
+4. Screen/Screen_51.c/h
+
+	a. Exported functions
+	
+		- allocBitMap() - Allocates displayable bitmap
+		- openScreen() - Opens new screen with given bitmap (also opens font)
+		- addCopperInt() - Adds copper interrupt server
+		- remCopperInt() - Removes copper interrupt server
+		- addCopperList() - Adds user copper-list
+
+	b. Notes
+		
+		This code is complete, but the DBufInfo should also be allocated (unless I will use RasInfo->BitMap).
+		The DBufInfo creation is in other file anyway.
+
+5. Copper/Copper.s
+
+	a. Exported functions
+	
+		- myCopper() - Copper interrupt server. Send signal to main task when ViewPort is visible.
+		
+	b. Notes
+	
+		This is written in assembly to properly handle Z condition code state.
+
+6. Windows/Windows_24.c/h
+
+	a. Exported functions
+	
+		- openWindow() - Opens backdrop window
+		- mainLoop() - Main signal loop which covers window's UserPort as well as Safe message and Copper interrupt
